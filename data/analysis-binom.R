@@ -42,7 +42,8 @@ glimpse(imputed.wvs.sum[[1]])
 # summary table: 1st imputed WVS dataset 
 wvs.sum <- bind_rows(imputed.wvs.sum) %>%
   ungroup() %>%
-  select(-c(cntry.yr.id, ccode, year, cntry.id, year.id, region))
+  select(-c(cntry.yr.id, ccode, year, cntry.id, year.id, region,
+            mean.democ, sd.democ, consol.democ))
 colnames(wvs.sum) <- c("Sum: High Democ. Support",
                        "Avg: Political Interest", "Avg: Country Aim", "Avg: Left or Right",
                        "Avg: Government Confidence", "Avg: Rate Political System",
@@ -71,7 +72,8 @@ imputed.dem.prop <- bind_rows(imputed.wvs.sum) %>%
                                                        (year >= 2017), # Trump
                                                      1, 0),
                                    # and cold war
-                                   post_cold_war = ifelse(year >= 1991, 1, 0),
+                                   post_cold_war = ifelse(year >= 1989 & 
+                                                            year <= 1994, 1, 0),
                                    constant = 1
                                  ) %>% # add protest data
                                  left_join(gdelt.protests))

@@ -381,7 +381,8 @@ us.data.final <- filter(us.data.five,
                                      1, 0),
                    trump = ifelse((year >= 2017), 1, 0), # Trump
                    # and cold war
-                   post_cold_war = ifelse(year >= 1991, 1, 0),
+                   post_cold_war = ifelse(year >= 1989 &
+                                            year <= 1994, 1, 0),
                    constant = 1
                  ) %>% # add protest data
               left_join(gdelt.protests) %>% # select key
