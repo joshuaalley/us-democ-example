@@ -2,7 +2,7 @@
 # set up data-cleaning and analysis of US example
 
 
-# load packages (out of order w/ memory issues)
+# load packages
 library(conflicted)
 library(tidyverse)
 library(lubridate)
@@ -10,9 +10,6 @@ library(sbgcop)
 library(naniar)
 library(countrycode)
 library(cmdstanr)
-#library(rstan)
-#  options(mc.cores = parallel::detectCores())
-#  rstan_options(auto_write = TRUE)
 library(bayesplot)
 library(loo)
 color_scheme_set("darkgray")
@@ -21,6 +18,7 @@ library(posterior)
 library(gridExtra)
 library(modelsummary)
 library(mice)
+library(brms)
  
 # manage conflicts 
 conflict_scout()

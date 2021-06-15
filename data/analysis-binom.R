@@ -2,7 +2,6 @@
 # Binomial model of democratic support in WVS
 
 # Model proportion of respondents in each state that support democracy
-# 
 
 
 ### data prep
@@ -43,7 +42,7 @@ glimpse(imputed.wvs.sum[[1]])
 wvs.sum <- bind_rows(imputed.wvs.sum) %>%
   ungroup() %>%
   select(-c(cntry.yr.id, ccode, year, cntry.id, year.id, region,
-            mean.democ, sd.democ, consol.democ))
+            mean.democ, sd.democ, consol.democ, constant))
 colnames(wvs.sum) <- c("Sum: High Democ. Support",
                        "Avg: Political Interest", "Avg: Country Aim", "Avg: Left or Right",
                        "Avg: Government Confidence", "Avg: Rate Political System",
@@ -115,7 +114,7 @@ draws.binom <- vector(mode = "list", (length = 5))
 stan.data.binom.draw <- sample(length(imputed.wvs.sum), 
                                size = 5, replace = FALSE)
 
-# loop over twenty imputed datasets and fit the model to each
+# loop over five imputed datasets and fit the model to each
 for(i in 1:length(draws.binom)){
   
  draw = stan.data.binom.draw[i]  
@@ -168,7 +167,7 @@ draws.binom[[i]] <- as_draws_df(fit.wvs.bin$draws())
 draws.binom <- bind_rows(draws.binom)
 
 # diagnostics
-mcmc_trace(draws.binom, pars = vars(param_range("lambda", c(1:11))))
+mcmc_trace(draws.binom, pars = vars(param_range("lambda", c(1:12))))
 ggsave("appendix/lambda-trace.png", height = 6, width = 8)
 
 # look at dispersion and other key params
@@ -178,8 +177,8 @@ mcmc_intervals(draws.binom, pars = c("sigma", "sigma_state", "sigma_year"),
 # vectors of parameter names 
 colnames(stan.data.binom$G) # omit constant in year-level reg
 lambda.labs = c("US GDP Growth", "US Democracy", "US Human Rights",
-                "US Protests", "US GINI", "Republican Pres", "Trump Pres",
-                "Post Cold War", "Chinese Growth",
+                "US Protests", "US GINI", "Clinton", "W. Bush", 
+                "Obama", "Trump","Chinese Growth",
                 "US Intervention")
 colnames(stan.data.binom$Z)
 gamma.labs = c("GDP per Capita", "GDP Growth", "Information Flow",
@@ -201,7 +200,7 @@ plot.us <- mcmc_intervals(draws.binom, pars = vars(param_range("lambda", c(2:11)
              ggtitle("Year Level: US Success")
 plot.us
 colnames(stan.data.binom$G)
-mean(draws.binom$`lambda[8]` < 0)
+mean(draws.binom$`lambda[10]` < 0)
 mcmc_intervals(draws.binom, pars = vars(param_range("alpha_year", c(1:28))))
 # state-year level 
 plot.state <- mcmc_intervals(draws.binom, regex_pars = "gamma",
@@ -295,7 +294,7 @@ pres.avg <- filter(theta.pars.sum, year >= 1994) %>%
 pres.avg
 
 # for publication
-pres.theta <- filter(theta.pars, year >= 1992) %>%
+pres.theta <- filter(theta.pars, year >= 1994) %>%
                ggplot(aes(x = year, y = median,
                  color = factor(president))) +
                geom_pointrange(aes(ymin = lower, ymax = upper), 

@@ -14,14 +14,14 @@ us.data.single <- filter(us.data.five,
     rep_pres = ifelse((year >= 1981 & year <= 1992) | # Reagan/Bush
                         (year >= 2001 & year <= 2008),  # HW Bush
                       1, 0),
-    trump = ifelse((year >= 2017), 1, 0), # Trump
     # and cold war
     post_cold_war = ifelse(year >= 1991, 1, 0),
     constant = 1
   ) %>% # add protest data
   left_join(gdelt.protests) %>% # select key
   select(year, growth_WDI_PW, perc.protest, v2x_libdem_VDEM,
-         fariss_hr, gini_disp, rep_pres, trump, post_cold_war,
+         fariss_hr, gini_disp, 
+         Clinton, W.Bush, Obama, Trump,
          chinese_growth, war_outcome) %>%
   rename(us_hr = fariss_hr,
          us_growth = growth_WDI_PW,
@@ -34,7 +34,7 @@ glimpse(us.data.single)
 #   is.na(us.data.single$us_hr)] <- (0.28316380 + 0.29497110) / 2
 
 # rescale by 2sd 
-us.data.single[, 2:10] <-  apply(us.data.single[, 2:10], 2, 
+us.data.single[, 2:12] <-  apply(us.data.single[, 2:12], 2, 
                                 function(x) arm::rescale(x, binary.inputs = "0/1"))
 
 # imputed state data rs
@@ -53,7 +53,14 @@ glimpse(imputed.state.yr.rs[[1]])
 data.single <- vector(mode = "list", length = length(imputed.data.wvs))
 for(i in 1:length(data.single)){
   data.single[[i]] <- left_join(imputed.data.wvs[[i]], imputed.state.yr.rs[[i]])
-  data.single[[i]] <- left_join(data.single[[i]], us.data.single)
+  data.single[[i]] <- left_join(data.single[[i]], us.data.single) %>%
+    mutate(
+      region = ifelse(ccode < 200, 1, # Americas 
+                      ifelse(ccode %in% 200:400, 2, # Europe
+                             ifelse(ccode > 400 & ccode < 600, 3, # subs Africa
+                                    ifelse(ccode >= 600 & ccode < 700, 4, # MENA
+                                           ifelse(ccode > 700, 5, 0))))) # Asia
+    )
 }
 
 # take 5 at random
@@ -67,8 +74,8 @@ stan.data.single <- list(
   state = data.single[[1]]$cntry.id,
   S = length(unique(data.single[[1]]$cntry.id)),
   # year/system indicators
-  #year = data.single[[1]]$year.id,
-  #T = length(unique(data.single[[1]]$year.id)),
+  year = data.single[[1]]$year.id,
+  T = length(unique(data.single[[1]]$year.id)),
   # individual level variables
   I = ncol(select(data.single[[1]], -c(agg.democ, high.democ, ccode, year, cntry.yr.id, year.id))),
   X = select(data.single[[1]], -c(agg.democ, high.democ, ccode, year, cntry.yr.id, year.id))
@@ -90,10 +97,12 @@ stan.model.cmd.covar$exe_file()
 
 
 # quick check with variational approx: 
-vb.wvs.covar <- stan.model.cmd.covar$variational(data = stan.data.single, seed = 123, output_samples = 1000)
+vb.wvs.covar <- stan.model.cmd.covar$variational(data = stan.data.single, seed = 123, 
+                                                 output_samples = 1000,
+                                                 threads = 2)
 vb.wvs.covar$cmdstan_summary()
 vb.wvs.covar$cmdstan_diagnose()
-# rm(vb.wvs.covar) # remove 
+rm(vb.wvs.covar) # remove 
 
 # stan model fit: takes ~7 days
 # system.time(
@@ -126,7 +135,7 @@ mcmc_acf(vb.wvs.covar$draws("alpha"))
 
 mcmc_pairs(vb.wvs.covar$draws(),
            pars = c("alpha", "sigma_state", 
-                    "omega", "gamma"),
+                    "sigma"),
            off_diag_args = list(size = 0.75))
 
 # summarize parameters

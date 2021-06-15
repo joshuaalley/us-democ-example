@@ -87,11 +87,8 @@ colnames(lambda.var) <- c("lower", "median", "upper")
 # add state and parameter labels
 lambda.var$region <- rep(c("Americas", "Europe", "Sub-Saharan Africa",
                            "Middle East and North Africa",
-                           "Asia"), each = 11)
-lambda.var$param <- c("Region Intercept", "US GDP Growth", "US Democracy", "US Human Rights",
-                      "US Protests", "US GINI", "Republican Pres", "Trump Pres",
-                      "Post Cold War", "Chinese Growth",
-                      "US Intervention")
+                           "Asia"), each = 12)
+lambda.var$param <- c("Region Intercept", lambda.labs)
 # order labels as factor for plotting
 lambda.var$param <- factor(lambda.var$param, levels = unique(lambda.var$param))
 
@@ -99,9 +96,8 @@ lambda.var$param <- factor(lambda.var$param, levels = unique(lambda.var$param))
 ggplot(lambda.var, aes(x = median, y = param)) +
   facet_grid(cols = vars(region)) +
   geom_vline(xintercept = 0) +
-  geom_point() +
-  geom_errorbar(aes(xmin = lower, xmax = upper),
-                width = .1) +
+  geom_pointrange(aes(xmin = lower, xmax = upper),
+                  size = .4) +
   labs(y = "Variable", x = "Posterior Median Slope") 
 ggsave("figures/vars-region.png", height = 8, width = 10)
 

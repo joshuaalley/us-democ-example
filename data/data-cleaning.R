@@ -105,7 +105,7 @@ wvs[sample(nrow(wvs), size = 10000), ] %>%
 # Multiple imputation of missing data with sbgcop
 reg.data.wvs <- ungroup(wvs) %>%
   filter(year <= 2018 & ccode > 6) %>% # cut down to match state-level data
-  select(agg.democ, 
+  select(dem.app, army.rule, strong.ldr,
          interest.pol, trust.gen, country.aim,
          left.right, gov.conf, rate.pol.sys,
          nationalism, financial.sat, resp.auth)
@@ -134,6 +134,7 @@ for(i in 1:length(imputed.data.wvs)){
                                                     ccode, year),
                                              impute.wvs$Y.impute[, , i]) %>%
     mutate(
+      agg.democ = dem.app + army.rule + strong.ldr,
       high.democ = ifelse(agg.democ >= 7, 1, 0)
     )
   
@@ -154,6 +155,7 @@ for(i in 1:length(imputed.data.wvs)){
 
 # look at outcome dist
 ggplot(imputed.data.wvs[[1]], aes(x = high.democ)) + geom_bar()
+ggplot(imputed.data.wvs[[1]], aes(x = agg.democ)) + geom_bar()
 
 
 
@@ -205,6 +207,27 @@ swiid_summary <- select(swiid_summary,
 
 # add GINI to IPE data
 ipe_v4 <- left_join(ipe_v4, swiid_summary)
+
+
+
+# US aid to a each country 
+us.aid <- read.csv("data/us_foreign_aid_country.csv") %>%
+           filter(transaction_type_name == "Disbursements" &
+                  str_detect(country_name, "Region") == FALSE &
+                  country_name != "China (Tibet)") %>% # aid spent
+           select(country_name, fiscal_year, constant_amount) %>% # key vars only 
+           rename(
+             year = fiscal_year,
+             us.aid = constant_amount
+           )
+us.aid$ccode <- countrycode(us.aid$country_name, 
+                         origin = "country.name",
+                         destination = "cown") 
+
+# add us aid to IPE data
+us.aid$year <- as.numeric(us.aid$year)
+ipe_v4 <- left_join(ipe_v4, select(us.aid, ccode, year, us.aid))
+
 
 # find unique ccode-year pairs in WVS
 wvs$cntry.yr.id <- wvs %>% group_by(ccode, year) %>% group_indices()
@@ -316,7 +339,7 @@ state.year.sum <- bind_rows(imputed.state.yr) %>%
 colnames(state.year.sum) <- c("GDP per Capita", "GDP Growth", "Information Flow",
                            "Social Globalization", "Bank Crisis",
                            "Liberal Democracy", "Conflict Battle Deaths", "Human Rights",
-                           "Inequality")
+                           "Inequality", "U.S. Aid")
 datasummary_skim(state.year.sum, fmt = "%.2f",
                  title = "State Level Variables",
                  histogram = FALSE,
@@ -333,14 +356,11 @@ ggplot(us.data, aes(x = year, y = v2x_libdem_VDEM)) +
 # add Chinese economic growth
 us.data <- cbind.data.frame(us.data,
                             select(filter(ipe_v4, ccode == 710),
-                            growth_WDI_PW)
-                                   )
+                            growth_WDI_PW))
 colnames(us.data)[length(colnames(us.data))] <- "chinese_growth"
 
 
 # # average all over prior five years
-# five.year <- apply(us.data[3:ncol(us.data)], 2, 
-#                    zoo::rollmean, 5)
 # lag all
 five.year <- apply(us.data[3:ncol(us.data)], 2, 
                   function(x) lag(x))
@@ -372,6 +392,24 @@ colnames(gdelt.protests) <- c("year", "countryname", "perc.protest")
 length(unique(state.year.data$year))
 length(unique(us.data.five$year))
 
+
+# presidential dummmies
+us.data.five$president[us.data.five$year >= 1977 & us.data.five$year < 1981] <- "Carter"
+us.data.five$president[us.data.five$year >= 1981 & us.data.five$year < 1989] <- "Reagan"
+us.data.five$president[us.data.five$year >= 1989 & us.data.five$year < 1993] <- "HW Bush"
+us.data.five$president[us.data.five$year >= 1993 & us.data.five$year < 2001] <- "Clinton"
+us.data.five$president[us.data.five$year >= 2001 & us.data.five$year < 2009] <- "W Bush"
+us.data.five$president[us.data.five$year >= 2009 & us.data.five$year < 2017] <- "Obama"
+us.data.five$president[us.data.five$year >= 2017] <- "Trump"
+
+# Presidential administration dummies
+us.pres.dum <- data.frame(model.matrix(~ factor(us.data.five$president) + 0))
+colnames(us.pres.dum) <- str_remove(colnames(us.pres.dum), 
+                                    "factor.us.data.five.president.")
+us.data.five <- cbind(us.data.five, us.pres.dum)
+
+
+
 us.data.final <- filter(us.data.five,
                         year %in% unique(state.year.data$year)) %>%
                  mutate(
@@ -379,16 +417,16 @@ us.data.final <- filter(us.data.five,
                    rep_pres = ifelse((year >= 1981 & year <= 1992) | # Reagan/Bush
                                      (year >= 2001 & year <= 2008),  # HW Bush
                                      1, 0),
-                   trump = ifelse((year >= 2017), 1, 0), # Trump
                    # and cold war
                    post_cold_war = ifelse(year >= 1989 &
-                                            year <= 1994, 1, 0),
+                                            year <= 2000, 1, 0),
                    constant = 1
                  ) %>% # add protest data
               left_join(gdelt.protests) %>% # select key
              select(constant, growth_WDI_PW, v2x_libdem_VDEM,
-                    fariss_hr, perc.protest, gini_disp, rep_pres, trump,
-                    post_cold_war, chinese_growth, war_outcome)
+                    fariss_hr, perc.protest, gini_disp, 
+                    Clinton, W.Bush, Obama, Trump,
+                    chinese_growth, war_outcome)
 vis_miss(us.data.final)
 
 # lag fariss HR: average of last two observed years
@@ -412,8 +450,8 @@ glimpse(us.data.final)
 # summary table
 us.data.sum <- select(us.data.final, -constant)
 colnames(us.data.sum) <- c("US GDP Growth", "US Democracy", "US Human Rights",
-                            "US Protests", "US GINI", "Republican Pres", "Trump Pres",
-                            "Post Cold War", "Chinese Growth",
+                            "US Protests", "US GINI", "Clinton", "W.Bush",
+                            "Obama", "Trump Pres", "Chinese Growth",
                             "US Intervention")
 datasummary_skim(us.data.sum, fmt = "%.2f",
                  title = "Year Level Variables",
@@ -421,7 +459,7 @@ datasummary_skim(us.data.sum, fmt = "%.2f",
                  output = "appendix/year-vars.tex")
 
 # rescale by 2sd 
-us.data.final[, 2:10] <-  apply(us.data.final[, 2:10], 2, 
+us.data.final[, 2:12] <-  apply(us.data.final[, 2:12], 2, 
                                function(x) arm::rescale(x, binary.inputs = "0/1"))
 glimpse(us.data.final)
 
