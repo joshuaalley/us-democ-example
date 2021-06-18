@@ -42,8 +42,8 @@ system.time(
       I = ncol(imputed.wvs.sum[[draw]][, 3:10]),
       X = imputed.wvs.sum[[draw]][, 3:10],
       # state level variables
-      J = ncol(imputed.state.yr.final[[draw]][, 3:11]),
-      Z = imputed.state.yr.final[[draw]][, 3:11],
+      J = ncol(imputed.state.yr.final[[draw]][, 3:12]),
+      Z = imputed.state.yr.final[[draw]][, 3:12],
       # year/US/system level vars
       L = ncol(us.data.single.long),
       G = us.data.single.long,
@@ -75,12 +75,13 @@ system.time(
 
 # combine draws into a full posterior
 saveRDS(draws.binom.var, "data/draws-all-var.RDS")
-# keep only year-level vars in workspace
-draws.binom.var <- select(bind_rows(draws.binom.var), starts_with("lambda"))
+
+draws.binom.var <- bind_rows(draws.binom.var)
 
 
 # illegible intervals: work with medians and facets
 lambda.var <- draws.binom.var %>% 
+  select(starts_with("lambda")) %>%
   summarise(across(everything(), list( ~quantile(., probs = c(0.05, 0.5, .95)))))
 lambda.var <- as.data.frame(t(lambda.var))
 colnames(lambda.var) <- c("lower", "median", "upper")
@@ -97,7 +98,7 @@ ggplot(lambda.var, aes(x = median, y = param)) +
   facet_grid(cols = vars(region)) +
   geom_vline(xintercept = 0) +
   geom_pointrange(aes(xmin = lower, xmax = upper),
-                  size = .4) +
+                  size = .5) +
   labs(y = "Variable", x = "Posterior Median Slope") 
 ggsave("figures/vars-region.png", height = 8, width = 10)
 
@@ -117,9 +118,8 @@ for(i in 1:length(unique(lambda.var$region))){
   plot <- filter(lambda.var, region == unique(lambda.var$region)[i]) %>%
     ggplot(aes(x = median, y = param)) +
     geom_vline(xintercept = 0) +
-    geom_errorbarh(aes(xmin = lower, xmax = upper),
-                   height = .1) +
-    geom_point() +
+    geom_pointrange(aes(xmin = lower, xmax = upper),
+                   size = .6) +
     labs(x = "Posterior Median and 90% Interval",
          y = "Parameter") +
     ggtitle(unique(lambda.var$region)[i])
@@ -128,7 +128,110 @@ for(i in 1:length(unique(lambda.var$region))){
 
 
 
-### Analysis by consolidated democ 
+# plot theta parameters 
+mcmc_intervals(draws.binom.var, pars = vars(param_range("theta", c(1:268))),
+               prob = .9, point_est = "median")
+# draw theta pars, get quantiles
+theta.pars <- t(select(draws.binom, starts_with("theta")) %>% 
+                  summarise(across(everything(), list( ~quantile(., probs = c(0.05, 0.5, .95))))))
+# add link function
+theta.pars <- apply(theta.pars, 2, function(x) exp(x) / (1 + exp(x)))
+theta.pars <- cbind.data.frame(theta.pars, imputed.wvs.sum[[1]]$year)
+colnames(theta.pars) <- c("lower", "median", "upper", "year")
+# create a presidential indicator
+theta.pars$president <- factor(ifelse(theta.pars$year < 1993, "Reagan/Bush",
+                                      ifelse(theta.pars$year >= 1993 & theta.pars$year <= 2000, "Clinton",
+                                             ifelse(theta.pars$year >= 2001 & theta.pars$year < 2009, "Bush",
+                                                    ifelse(theta.pars$year >= 2009 & theta.pars$year < 2017, "Obama",
+                                                           "Trump")))))
+
+# summarize 
+theta.pars.sum <- theta.pars %>%
+  group_by(president) %>%
+  select(median, president, year) %>%
+  summarize(
+    median.prob = mean(median),
+    se = sd(median) / sqrt(n()),
+    year = mean(year)
+  )
+
+# plot theta over time with loess 
+filter(theta.pars, year >= 1994) %>%
+  ggplot(aes(x = year, y = median)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper), 
+                  position=position_jitter(width=0.5)) +
+  geom_smooth() +
+  labs(x = "Year", y = "Estimated Probability of High Democratic Support") +
+  ggtitle("Estimated Support for Democracy: 1994-2018")
+
+# plot theta pars
+filter(theta.pars, year >= 1994) %>%
+  ggplot(aes(x = year, y = median,
+             color = president)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper), 
+                  position=position_jitter(width=0.5)) +
+  scale_colour_brewer(palette = "Set1") +
+  labs(x = "Year", y = "Probability of High Democratic Support")
+
+# Average by president 
+pres.avg <- filter(theta.pars.sum, year >= 1994) %>%
+  ggplot(aes(x = year, y = median.prob,
+             ymin = median.prob - 2*se,
+             ymax = median.prob + 2*se,
+             label = president)) +
+  geom_pointrange() +
+  geom_text(nudge_y = 0.09, size = 5) +
+  labs(x = "Year", y = "Average Democractic Support",
+       title = "Average Probability of High Democratic Support by President")
+pres.avg
+
+# for publication
+pres.theta <- filter(theta.pars, year >= 1994) %>%
+  ggplot(aes(x = year, y = median,
+             color = factor(president))) +
+  geom_pointrange(aes(ymin = lower, ymax = upper), 
+                  position=position_jitter(width=0.5)) +
+  scale_colour_grey() +
+  labs(x = "Year", y = "Probability of High Democratic Support",
+       color = "President",
+       title = "Estimated Probability of High Democratic Support: 1994-2018")
+pres.theta
+
+
+# combine
+grid.arrange(pres.theta, pres.avg, nrow = 2)
+theta.est <- arrangeGrob(pres.theta, pres.avg, nrow = 2)
+ggsave("appendix/theta-est.png", theta.est, height = 6, width = 8)
+
+
+
+# state-year level 
+plot.state.vars <- mcmc_intervals(draws.binom.var, regex_pars = "gamma",
+                             prob = .9, point_est = "median") +
+  geom_vline(xintercept = 0) +
+  scale_y_discrete(
+    labels = gamma.labs) +
+  ggtitle("State Level")
+plot.state.vars
+# individual level
+plot.indiv.vars <- mcmc_intervals(draws.binom.var, regex_pars = "beta",
+                             prob = .9, point_est = "median") + 
+  geom_vline(xintercept = 0) +
+  scale_y_discrete(
+    labels = beta.labs) +
+  ggtitle("Individual Level")
+plot.indiv.vars
+
+
+# combine 
+grid.arrange(plot.indiv.vars, plot.state.vars, nrow = 2)
+
+other.levels.vars <- arrangeGrob(plot.indiv.vars, plot.state.vars, nrow = 2)
+ggsave("appendix/other-levels-vars.png", ml.res, height = 6, width = 8)
+
+
+
+### Analysis by consolidated democ ####
 ### Loop over 5 imputed datasets
 # define list of draws
 draws.binom.democ <- vector(mode = "list", (length = 5))
@@ -232,7 +335,7 @@ for(i in 1:length(unique(lambda.democ$democ))){
 
 
 
-### Varying individual level slopes by country 
+### Varying individual level slopes by country ####
 # compile model code
 stan.model.bin.indiv <- cmdstan_model("data/ml-model-vars-indiv.stan")
 

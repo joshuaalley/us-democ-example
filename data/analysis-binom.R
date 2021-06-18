@@ -184,7 +184,7 @@ colnames(stan.data.binom$Z)
 gamma.labs = c("GDP per Capita", "GDP Growth", "Information Flow",
                "Social Globalization", "Bank Crisis",
                "Liberal Democracy", "Conflict Battle Deaths", "Human Rights",
-               "Inequality")
+               "Inequality", "U.S. Aid")
 colnames(stan.data.binom$X)
 beta.labs = c("Political Interest", "Country Aim", "Left or Right",
                "Government Confidence", "Rate Political System",
@@ -232,84 +232,7 @@ ml.res <- arrangeGrob(plot.indiv, plot.state, plot.us,
                       layout_matrix = rbind(c(1, 2),
                                             c(3, 3))
 )
-ggsave("figures/ml-res.png", ml.res, height = 6, width = 8)
-
-
-# plot theta parameters 
-mcmc_intervals(draws.binom, pars = vars(param_range("theta", c(1:268))),
-               prob = .9, point_est = "median")
-# draw theta pars, get quantiles
-theta.pars <- t(select(draws.binom, starts_with("theta")) %>% 
-      summarise(across(everything(), list( ~quantile(., probs = c(0.05, 0.5, .95))))))
-# add link function
-theta.pars <- apply(theta.pars, 2, function(x) exp(x) / (1 + exp(x)))
-theta.pars <- cbind.data.frame(theta.pars, imputed.wvs.sum[[1]]$year)
-colnames(theta.pars) <- c("lower", "median", "upper", "year")
-# create a presidential indicator
-theta.pars$president <- factor(ifelse(theta.pars$year < 1993, "Reagan/Bush",
-                         ifelse(theta.pars$year >= 1993 & theta.pars$year <= 2000, "Clinton",
-                          ifelse(theta.pars$year >= 2001 & theta.pars$year < 2009, "Bush",
-                            ifelse(theta.pars$year >= 2009 & theta.pars$year < 2017, "Obama",
-                                   "Trump")))))
-
-# summarize 
-theta.pars.sum <- theta.pars %>%
-                   group_by(president) %>%
-                   select(median, president, year) %>%
-                  summarize(
-                    median.prob = mean(median),
-                    se = sd(median) / sqrt(n()),
-                    year = mean(year)
-                  )
-
-# plot theta over time with loess 
-filter(theta.pars, year >= 1994) %>%
-ggplot(aes(x = year, y = median)) +
-  geom_pointrange(aes(ymin = lower, ymax = upper), 
-                  position=position_jitter(width=0.5)) +
-  geom_smooth() +
-  labs(x = "Year", y = "Estimated Probability of High Democratic Support") +
-  ggtitle("Estimated Support for Democracy: 1994-2018")
-ggsave("figures/theta-only.png", height = 6, width = 8)
-
-# plot theta pars
-filter(theta.pars, year >= 1994) %>%
-ggplot(aes(x = year, y = median,
-           color = president)) +
-  geom_pointrange(aes(ymin = lower, ymax = upper), 
-                  position=position_jitter(width=0.5)) +
-  scale_colour_brewer(palette = "Set1") +
-  labs(x = "Year", y = "Probability of High Democratic Support")
-
-# Average by president 
-pres.avg <- filter(theta.pars.sum, year >= 1994) %>%
-             ggplot(aes(x = year, y = median.prob,
-                      ymin = median.prob - 2*se,
-                      ymax = median.prob + 2*se,
-              label = president)) +
-             geom_pointrange() +
-             geom_text(nudge_y = 0.09, size = 5) +
-             labs(x = "Year", y = "Average Democractic Support",
-              title = "Average Probability of High Democratic Support by President")
-pres.avg
-
-# for publication
-pres.theta <- filter(theta.pars, year >= 1994) %>%
-               ggplot(aes(x = year, y = median,
-                 color = factor(president))) +
-               geom_pointrange(aes(ymin = lower, ymax = upper), 
-                  position=position_jitter(width=0.5)) +
-              scale_colour_grey() +
-              labs(x = "Year", y = "Probability of High Democratic Support",
-              color = "President",
-              title = "Estimated Probability of High Democratic Support: 1994-2018")
-pres.theta
-
-
-# combine
-grid.arrange(pres.theta, pres.avg, nrow = 2)
-theta.est <- arrangeGrob(pres.theta, pres.avg, nrow = 2)
-ggsave("figures/theta-est.png", theta.est, height = 6, width = 8)
+ggsave("appendix/ml-res.png", ml.res, height = 6, width = 8)
 
 
 
