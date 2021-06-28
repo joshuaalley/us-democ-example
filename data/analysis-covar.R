@@ -41,18 +41,19 @@ us.data.single[, 2:12] <-  apply(us.data.single[, 2:12], 2,
 imputed.state.yr.rs <- vector(mode = "list", length = 20)
 for(i in 1:length(imputed.state.yr)){
   # rescale by 2sd
-  imputed.state.yr.rs[[i]] <- as.data.frame(apply(imputed.state.yr[[i]][, 4:12],
+  imputed.state.yr.rs[[i]] <- as.data.frame(apply(imputed.state.yr[[i]][, 4:13],
                                                   2, function(x) arm::rescale(x, binary.inputs = "0/1")))
   imputed.state.yr.rs[[i]] <- cbind.data.frame(select(imputed.state.yr[[i]],
                                                       ccode, year),
                                                imputed.state.yr.rs[[i]])
-}  
+}
 glimpse(imputed.state.yr.rs[[1]])
 
 # list of data frames
 data.single <- vector(mode = "list", length = length(imputed.data.wvs))
 for(i in 1:length(data.single)){
-  data.single[[i]] <- left_join(imputed.data.wvs[[i]], imputed.state.yr.rs[[i]])
+  data.single[[i]] <- left_join(imputed.data.wvs[[i]], 
+                                select(imputed.state.yr[[i]], -cntry.yr.id))
   data.single[[i]] <- left_join(data.single[[i]], us.data.single) %>%
     mutate(
       region = ifelse(ccode < 200, 1, # Americas 

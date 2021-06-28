@@ -13,7 +13,7 @@
 
 
 \singlespace
-\title{\textbf{Appendix: Does U.S. Success Promote Democracy Abroad?}}
+\title{\textbf{Appendix: Trump and Public Support for Democracy Abroad}}
 %\author{Joshua Alley and John Owen} 
 \date{}
 
@@ -25,36 +25,47 @@
 
 \singlespace 
 
-This appendix provides more detail about the multilevel models and an extension with varying slopes at the individual level. 
+This appendix provides more detail about the multilevel model in the manuscript and association between the Trump administration and democratic support in Asia. 
 Please note that the World Values survey does not permit disseminating copies of the data in replication archives. 
-We used version 1.6 of the World Values survey longitudinal data, which can be downloaded from: \url{https://www.worldvaluessurvey.org/WVSDocumentationWVL.jsp}. 
+We used version 1.6 of the World Values survey longitudinal data, which can be downloaded from: \url{https://www.worldvaluessurvey.org/WVSDocumentationWVL.jsp}.
+
 
 
 \section{Model Specification} 
 
-\subsection{Fixed Year-Level Slopes} 
 
-The binomial likelihood of the proportion of high democratic support across the number of respondents within each state-year group can be expressed as follows, with the probability of success $\theta$ in each country-year observation partially pooled such that ~ $\theta_i \sim N(\mu_i, \sigma)$ : 
+
+The varying slopes model lets the relationship between U.S. success and other year-level factors shift across regions, rather than assuming a constant effect. 
+The binomial likelihood of the proportion of high democratic support given the number of respondents within each state-year group can be expressed as follows, with the probability of success $\theta$ for each country-year observation partially pooled such that ~ $\theta_i \sim N(\mu_i, \sigma)$ : 
+
 
 \begin{equation}
-\mathrm{ y \sim Binomial(Num. Resp, \theta)}
+\mathrm{ y \sim Binomial(Num. Resp, \theta_i)}
 \end{equation} 
 
-
 The expected value of high democratic support $\mu$ in each state-year observation is:
-\begin{equation}
-\mathrm{\mu_i = \alpha + \alpha_{state} + \alpha_{year} + \textbf{X} \beta + \textbf{Z} \gamma}
-\end{equation}
-
-Then the year level variables predict the mean of each year varying intercept in a regression model with a constant term. 
 
 \begin{equation}
-\mathrm{\alpha_{year} = \textbf{G} \lambda }
-\end{equation}
+\mathrm{ \mu = \alpha + \alpha_{state} + \alpha_{year} + \textbf{X} \beta + \textbf{Z} \gamma +  \textbf{G} \lambda_{region}} 
+\end{equation} 
 
-\autoref{tab:priors} summarizes the prior distributions in the multilevel model. 
+There are three sets of variables here. 
+The year level variables matrix $\textbf{G}$ has varying slopes by region.
+The state level variables $\textbf{Z}$ and $\textbf{X}$ do not change across regions. 
+
+
+The specification subsumes regional intercepts and year varying slopes expressed in $\textbf{G}$ into a multivariate normal prior with covariance matrix $\Sigma$ with an LKJ prior, further optimized with a Choleskey factorization: 
+
+\begin{equation}
+\mathrm{\alpha_{region}, \lambda_{region} \sim \mbox{multivariate normal}(\mu_{region}, \mu_{\lambda}, \Sigma)}
+\end{equation}
+ 
+
+\autoref{tab:priors} summarizes the other prior distributions in the multilevel model. 
 All priors are weakly informative relative to the scale of the data, and the regression parameters are robust to unusually large effect sizes. 
 We employ non-centered parameterizations of the state and year intercepts in fitting the model. 
+
+
 
 \begin{table} % Create a table of priors.
 \begin{center}
@@ -66,34 +77,15 @@ $ p(\alpha_{state}) \sim N(\mu_{state}, \sigma^{st}) $ \\
 $ p(\mu_{state}) \sim N(0, 1) $ \\ 
 $ p(\sigma^{st}) \sim \mbox{half-}N(0, .5) $ \\ 
 $ p(\beta) \sim \mbox{student-t}(5, 0, 1) $ \\
-$ p(\gamma) \sim \mbox{student-t}(5, 0, 1) $ \\
-$ p(\lambda) \sim \mbox{student-t}(5, 0, 1) $ 
+$ p(\gamma) \sim \mbox{student-t}(5, 0, 1) $ 
 \end{tabular} 
 \caption{Summary of Priors in Multilevel Model} 
 \label{tab:priors}
 \end{center} 
 \end{table} 
 
-Given these priors, the regression model can be rewritten as: 
-\begin{equation}
-\mathrm{ \mu = \alpha + \alpha_{state} + N(G \lambda, \sigma^{yr}) + \textbf{X} \beta + \textbf{Z} \gamma)}
-\end{equation} 
 
-We express the varying slopes model with this alternative notation, as it makes indexing by region more straightforward. The next section summarizes the varying slopes model. 
 
-\subsection{Varying Year-Level Slopes} 
-
-The varying slopes model lets the relationship between U.S. success and other year-level factors shift across states, rather than assuming a constant effect. 
-
-\begin{equation}
-\mathrm{ \mu = \alpha + \alpha_{state} + \alpha_{year} + \textbf{X} \beta + \textbf{Z} \gamma +  \textbf{G} \lambda_{region}} 
-\end{equation} 
-
-The specification subsumes regional intercepts and state-year varying slopes into a multivariate normal prior with covariance matrix $\Sigma$ with an LKJ prior, further optimized with a Choleskey factorization: 
-
-\begin{equation}
-\mathrm{\alpha_{region}, \lambda_{region} \sim \mbox{multivariate normal}(\mu_{region}, \mu_{\lambda}, \Sigma)}
-\end{equation}
 
 
 \section{Hamiltonian Monte Carlo Diagnostics}
@@ -105,16 +97,18 @@ Energy diagnostics and the effective sample size for the potsterior medians and 
 All of these estimates suggest that the Hamiltonian Monte Carlo adequately explored the posterior distribution. 
 
 
-\begin{figure}
-\includegraphics[width = .95\textwidth]{lambda-trace.png}
-\caption{Trace plot of the year-level regression parameters in a multilevel model of foreign attitudes towards democracy and U.S. success, 1980 to 2019.}
-\label{fig:lambda-trace} 
-\end{figure}
-
 \section{Variables}
 
 
 This section summarizes the key variables in the model. 
+The state and individual level variables account for other determinants of attitudes towards democracy. 
+State-year variables include income inequality, GDP levels and growth, financial crisis presence, liberal democracy, human rights practices, civil war deaths, U.S. aid disbursements and globalization. 
+We use the VDEM measure of democracy for the U.S. and other states as it is a common measure of democratic quality \citep{WaldnerLust2018}.
+We control for U.S. aid disbursements to ensure that our leadership findings do not reflect changes in investment in democracy promotion and aid more generally.\footnote{Data on U.S. democracy promotion aid has unfortunate temporal limitations.} 
+We also adjust for individual political ideology, perceptions of domestic political institutions, and economic security.
+
+
+In the remainder of this section, we tabulate the variables at each level of analysis. 
 We start with the year-level variables that measure U.S. success and failure. 
 \autoref{tab:year-vars} summarizes these variables and their distribution. 
 \autoref{tab:state-vars} summarizes the state-level variables across all imputed datasets.
@@ -134,9 +128,10 @@ US Democracy & 23 & 0 & 0.80 & 0.03 & 0.74 & 0.80 & 0.86\\
 US Human Rights & 29 & 0 & 0.73 & 0.68 & -0.17 & 0.55 & 1.88\\
 US Protests & 29 & 0 & 0.69 & 0.17 & 0.42 & 0.72 & 1.05\\
 US GINI & 22 & 0 & 36.72 & 1.93 & 31.60 & 37.40 & 38.50\\
-Republican Pres & 2 & 0 & 0.48 & 0.51 & 0.00 & 0.00 & 1.00\\
-Trump Pres & 2 & 0 & 0.07 & 0.26 & 0.00 & 0.00 & 1.00\\
-Post Cold War & 2 & 0 & 0.83 & 0.38 & 0.00 & 1.00 & 1.00\\
+Clinton & 2 & 0 & 0.21 & 0.41 & 0.00 & 0.00 & 1.00\\
+W.Bush & 2 & 0 & 0.28 & 0.45 & 0.00 & 0.00 & 1.00\\
+Obama & 2 & 0 & 0.24 & 0.44 & 0.00 & 0.00 & 1.00\\
+Trump & 2 & 0 & 0.07 & 0.26 & 0.00 & 0.00 & 1.00\\
 Chinese Growth & 29 & 0 & 9.02 & 2.45 & 3.91 & 9.23 & 14.23\\
 US Intervention & 3 & 0 & -0.10 & 0.56 & -1.00 & 0.00 & 1.00\\
 \bottomrule
@@ -152,15 +147,16 @@ US Intervention & 3 & 0 & -0.10 & 0.56 & -1.00 & 0.00 & 1.00\\
 \toprule
   & Unique (\#) & Missing (\%) & Mean & SD & Min & Median & Max\\
 \midrule
-GDP per Capita & 250 & 0 & 14102.55 & 16745.84 & 273.49 & 7563.99 & 91565.73\\
-GDP Growth & 248 & 0 & 4.38 & 5.31 & -24.00 & 4.11 & 54.16\\
-Information Flow & 233 & 0 & 64.39 & 19.13 & 13.28 & 68.37 & 94.82\\
-Social Globalization & 233 & 0 & 59.40 & 18.64 & 12.00 & 61.37 & 90.81\\
+GDP per Capita & 250 & 0 & 14181.60 & 16819.63 & 273.49 & 7563.99 & 91565.73\\
+GDP Growth & 248 & 0 & 4.37 & 5.47 & -24.00 & 4.10 & 54.16\\
+Information Flow & 233 & 0 & 64.42 & 19.17 & 13.28 & 68.37 & 94.82\\
+Social Globalization & 233 & 0 & 59.52 & 18.65 & 12.00 & 61.37 & 90.81\\
 Bank Crisis & 2 & 0 & 0.09 & 0.29 & 0.00 & 0.00 & 1.00\\
 Liberal Democracy & 216 & 0 & 0.49 & 0.27 & 0.03 & 0.50 & 0.89\\
-Conflict Battle Deaths & 29 & 0 & 474.94 & 3233.73 & 0.00 & 0.00 & 35071.00\\
+Conflict Battle Deaths & 29 & 0 & 462.40 & 3189.60 & 0.00 & 0.00 & 35071.00\\
 Human Rights & 236 & 0 & 0.11 & 1.52 & -2.57 & -0.02 & 3.97\\
-Inequality & 157 & 0 & 37.51 & 9.04 & 17.50 & 36.90 & 63.20\\
+Inequality & 157 & 0 & 37.45 & 9.05 & 17.50 & 36.90 & 63.20\\
+U.S. Aid & 145 & 0 & 281572388.69 & 963425070.89 & 6251.00 & 46748184.00 & 10149892020.00\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -189,32 +185,91 @@ Number of Respondents & 170 & 0 & 1450.53 & 574.91 & 240 & 1216.00 & 4078\\
 \end{table}
 
 
-
-\section{Varying Slopes on Individual-Level Factors}
-
-The models in the manuscript assume that individual level variables have the same effect across states. 
-In this section, we report the results of a model that relaxes that potentially problematic assumption. 
-We make very similar inferences about the connection between U.S. performance and public attitudes towards democracy outside the United States.
+\section{Other Estimates}
 
 
-The multilevel model behind this analysis lets the individual level variable slopes vary by state.
-It also subsumes the state-intercepts and these slopes into a common multivariate normal prior. 
-Thus, the connection between individual factors and attitudes towards democracy varies across states. 
-We undertook this analysis instead of a two-stage model because the number of respondents varies widely by country, so sharing information across countries is helpful.   
+This section of the appendix summarizes other estimates from the multilevel model in the manuscript. 
+First, we describe estimates from the state and individual level variables in \autoref{fig:other-levels-vars}. 
+Then we plot the estimated probability of robust democratic support across post Cold War presidents in \autoref{fig:theta-est}. 
 
-
-\autoref{fig:year-var-indiv} plots the year level variable coefficient estimates from this model. 
-The same broad pattern applies.
-The Trump administration is correlated with lower support for democracy outside the United States, though the estimate is closer to zero.
-In the manuscript, 97\% of the Trump coefficient posterior mass is negative, while in this estimate, 94\% of the posterior mass is negative.
-Other U.S. characteristics have little impact.
-The  
 
 \begin{figure}
-\includegraphics[width = .95\textwidth]{year-var-indiv.png}
-\caption{Year-level regression parameters in a multilevel model of foreign attitudes towards democracy and U.S. success, 1980 to 2019. In this model individual-level slopes vary by country. Points mark the posterior median, and the error bars summarize the 90\% credible interval.}
-\label{fig:year-var-indiv} 
+\includegraphics[width = .95\textwidth]{other-levels-vars.png}
+\caption{Estimated association between individual and state level variables and the probability of high democratic support. Point estimates mark the posterior median, and error bars summarize the 90\% credible interval.}
+\label{fig:other-levels-vars} 
 \end{figure}
+
+
+Some individual and state-level variables also impact support for democracy outside the United States. 
+The individual variables are averaged at the country-year level to facilitate binomial model fitting, as the individual estimates compare averages across state-year estimates.
+Higher average ratings of the political system and confidence in the government in a country increase the likelihood of high democratic support. 
+Countries where individuals are more right-wing on average express lower support for democracy. 
+The nationalism and financial satisfaction averages are also negative, but are more uncertain.
+
+
+At the state level, GDP per capita and respect for human rights are positively associated with high democratic support. 
+The GDP growth and liberal democracy coefficient estimates are largely positive, but consistent with slight negative effects. 
+The income inequality and social globalization coefficients are mostly negative with substantial uncertainty. 
+
+
+\begin{figure}
+\includegraphics[width = .95\textwidth]{theta-est.png}
+\caption{Estimated probability of high democratic support in country-year observations from 1994 to 2018, with averages by presidential administration. In the top panel, each point marks the estimated probability of high democratic support in a country-year observation, and the error bars summarize the 90\% credible interval. The bottom panel is the average of the posterior medians for each president. Estimates from before 1994 omitted to make the plot more legible.  }
+\label{fig:theta-est} 
+\end{figure}
+
+
+\autoref{fig:theta-est} plots the estimated probability of high democratic support for each country-year observation in the WVS from 1994 to 2018. 
+Each point is the estimated $\theta$ parameter in the binomial logit model.
+This is the probability of a success ---high democratic support--- in the number of binomial trials given by the number of respondents. 
+
+
+There are some notable patterns in democratic support over time.
+The first is that the average of the $\theta$ parameters by President declines gradually over time, before dropping dramatically during the Trump administration.  
+This is driven by a cluster of state-year observations with very low probabilities of high democratic support. 
+Interestingly, several estimates from the Trump administration are higher than any from the Obama administration. 
+Further data might show global polarization in democratic support. 
+
+
+\section{Trump and Democratic Support in Asia}
+
+The models in the manuscript find a negative impact of the Trump administration on support for democracy in Asia. 
+In this section of the appendix, we explore that finding further. 
+To do so, we fit separate models to each state in Asia that had WVS data before and after Trump took office in early 2017. 
+This generates results for nine countries. 
+
+
+Fitting separate models for each state is a simple way to assess whether the impact of the Trump administration and other factors varies by country. 
+It also allows us to draw on the full range of the democratic support variable, instead of simplifying it to a dummy, as in the manuscript. 
+Because democratic support takes on relatively few integer values, we fit Bayesian ordinal logit models with flexible thresholds between the outcome levels using BRMS \citep{Buerkner2017}.
+The lack of cross-sectional variation in these analyses meant we could only include two state and year level variables without introducing perfect multicollinearity into the model. 
+We therefore included a national economic growth variable and the Trump administration dummy, in addition to a series of controls at the individual level. 
+For each state, we fit models to five imputed datasets, and then combined them into a single posterior, following standard practice. 
+
+
+We find that the Trump presidency reduced support for democracy throughout Asia. 
+\autoref{fig:asia-state-trump} plots the estimated coefficient on the Trump administration dummy variable from each of the nine models of democratic support over time in Asia states. 
+Most of the coefficient estimates are negative, and most are substantively large as well. 
+
+
+\begin{figure}
+\includegraphics[width = .95\textwidth]{asia-state-trump.png}
+\caption{Estimated association between Donald Trump's presidency and public support for democracy in nine Asian countries, 1980 to 2019. Point estimates mark the posterior median, and error bars summarize the 90\% credible interval.}
+\label{fig:asia-state-trump} 
+\end{figure}
+
+
+The Trump effect is largest in Bangladesh, but the coefficient magnitude may reflect that only three WVS waves covered Bangladesh, so there is limited temporal variation in that model. 
+The Kazakhstan coefficient has substantial uncertainty for similar reasons. 
+Only in Australia is the Trump administration correlated with increased democratic support. 
+
+
+Indonesia, Thailand, South Korea, Pakistan, Malaysia and China all saw lower public support for democracy during the Trump administration. 
+The common change in a group with such varied characteristics implies that a common shock is plausible. 
+The mechanism likely differs across these countries, however. 
+South Korea is a close U.S. ally, and Thailand is somewhat aligned with the United States.
+China's relationship with the Trump administration was often antagonistic. 
+Pakistan has some ties to the U.S., along with close connections to China. 
   
   
   \newpage

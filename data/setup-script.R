@@ -17,8 +17,8 @@ library(shinystan)
 library(posterior)
 library(gridExtra)
 library(modelsummary)
-library(mice)
 library(brms)
+library(wesanderson)
  
 # manage conflicts 
 conflict_scout()

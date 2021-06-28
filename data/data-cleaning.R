@@ -45,7 +45,14 @@ wvs <- wvs %>%
                nationalism = Y011B,
                age = X003,
                gender = X001,
-             )
+             ) %>%
+            mutate(
+              region = ifelse(ccode < 200, 1, # Americas 
+                         ifelse(ccode %in% 200:400, 2, # Europe
+                           ifelse(ccode > 400 & ccode < 600, 3, # subs Africa
+                             ifelse(ccode >= 600 & ccode < 700, 4, # MENA
+                               ifelse(ccode > 700, 5, 0))))) # Asia
+            )
 glimpse(wvs)
 
 # create democratic support index like that of krieckhaus et al and others 
@@ -79,7 +86,7 @@ ggplot(wvs, aes(x = agg.democ,
                 fill = factor(wvs.wave))) +
   geom_bar(position = "dodge")
 
-# hig democracy dummmy
+# high democracy dummmy
 wvs$high.democ <- ifelse(wvs$agg.democ >= 7, 1, 0)
 table(wvs$high.democ)
 
@@ -227,7 +234,8 @@ us.aid$ccode <- countrycode(us.aid$country_name,
 # add us aid to IPE data
 us.aid$year <- as.numeric(us.aid$year)
 ipe_v4 <- left_join(ipe_v4, select(us.aid, ccode, year, us.aid))
-
+ipe_v4$us.aid[is.na(ipe_v4$us.aid)] <- 0 # years w/ no aid missing
+ 
 
 # find unique ccode-year pairs in WVS
 wvs$cntry.yr.id <- wvs %>% group_by(ccode, year) %>% group_indices()

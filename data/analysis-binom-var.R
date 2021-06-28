@@ -155,6 +155,20 @@ theta.pars.sum <- theta.pars %>%
     year = mean(year)
   )
 
+# add ccode and region
+theta.pars <- theta.pars %>%
+              mutate(
+                ccode = imputed.state.yr[[1]]$ccode,
+                region = ifelse(ccode < 200, "Americas", # Americas 
+                          ifelse(ccode %in% 200:400, "Europe", # Europe
+                           ifelse(ccode > 400 & ccode < 600, "Africa", # subs Africa
+                            ifelse(ccode >= 600 & ccode < 700, "MENA", # MENA
+                             ifelse(ccode > 700, "Asia", 0))))))
+
+
+
+
+
 # plot theta over time with loess 
 filter(theta.pars, year >= 1994) %>%
   ggplot(aes(x = year, y = median)) +
@@ -172,6 +186,20 @@ filter(theta.pars, year >= 1994) %>%
                   position=position_jitter(width=0.5)) +
   scale_colour_brewer(palette = "Set1") +
   labs(x = "Year", y = "Probability of High Democratic Support")
+
+
+# plot theta pars by region- president facet
+filter(theta.pars, year >= 1994) %>%
+  ggplot(aes(x = year, y = median,
+             color = factor(president))) +
+  facet_wrap(~ region) +
+  geom_pointrange(aes(ymin = lower, ymax = upper), 
+                  position=position_jitter(width=0.5),
+                  alpha = .75) +
+  scale_color_manual(values = wes_palette("Zissou1")) +
+  labs(x = "Year", y = "Probability of High Democratic Support",
+       color = "President")
+
 
 # Average by president 
 pres.avg <- filter(theta.pars.sum, year >= 1994) %>%
@@ -227,7 +255,9 @@ plot.indiv.vars
 grid.arrange(plot.indiv.vars, plot.state.vars, nrow = 2)
 
 other.levels.vars <- arrangeGrob(plot.indiv.vars, plot.state.vars, nrow = 2)
-ggsave("appendix/other-levels-vars.png", ml.res, height = 6, width = 8)
+ggsave("appendix/other-levels-vars.png", other.levels.vars, height = 6, width = 8)
+
+
 
 
 
@@ -275,7 +305,7 @@ system.time(
       parallel_chains = 4,
       refresh = 200,
       max_treedepth = 20,
-      adapt_delta = .95
+      adapt_delta = .98
     )
     
     # print diagnostics
@@ -299,11 +329,11 @@ lambda.democ <- draws.binom.democ %>%
 lambda.democ <- as.data.frame(t(lambda.democ))
 colnames(lambda.democ) <- c("lower", "median", "upper")
 # add state and parameter labels
-lambda.democ$democ <- rep(c("Autocracy", "Middle", "Democracy"), each = 11)
+lambda.democ$democ <- rep(c("Autocracy", "Middle", "Democracy"), each = 12)
 lambda.democ$param <- c("Democracy Group Intercept", "US GDP Growth", "US Democracy", "US Human Rights",
-                      "US Protests", "US GINI", "Republican Pres", "Trump Pres",
-                      "Post Cold War", "Chinese Growth",
-                      "US Intervention")
+                        "US Protests", "US GINI", "Clinton", "W. Bush", 
+                        "Obama", "Trump","Chinese Growth",
+                        "US Intervention")
 # order labels as factor for plotting
 lambda.democ$param <- factor(lambda.democ$param, levels = unique(lambda.democ$param))
 
@@ -315,7 +345,7 @@ ggplot(lambda.democ, aes(x = median, y = param)) +
   geom_errorbar(aes(xmin = lower, xmax = upper),
                 width = .1) +
   labs(y = "Variable", x = "Posterior Median Slope") 
-ggsave("figures/vars-democ.png", height = 8, width = 10)
+ggsave("appendix/democ-var-slopes.png", height = 8, width = 10)
 
 
 # plot by democracy group
@@ -331,82 +361,3 @@ for(i in 1:length(unique(lambda.democ$democ))){
     ggtitle(unique(lambda.democ$democ)[i])
   print(plot)
 }
-
-
-
-
-### Varying individual level slopes by country ####
-# compile model code
-stan.model.bin.indiv <- cmdstan_model("data/ml-model-vars-indiv.stan")
-
-# empty list of draws
-draws.binom.indiv <- vector(mode = "list", (length = 5))
-# same data numbers drawn (stan.data.binom.draw)
-
-# loop over five imputed datasets and fit the model to each
-system.time(
-  for(i in 1:length(draws.binom.democ)){
-    
-    draw = stan.data.binom.draw[i]  
-    # set up stan data 
-    # create data list
-    stan.data.binom.indiv <- list(
-      N = nrow(imputed.wvs.sum[[draw]]),
-      n_res = imputed.wvs.sum[[draw]]$n.res,
-      y = imputed.wvs.sum[[draw]]$high.democ.sum,
-      # year/system indicators
-      year = imputed.wvs.sum[[draw]]$year.id,
-      T = length(unique(imputed.wvs.sum[[draw]]$year.id)),
-      # individual level variables
-      I = ncol(cbind.data.frame(imputed.wvs.sum[[1]]$constant,
-                      imputed.wvs.sum[[draw]][, 3:10])),
-      X = cbind.data.frame(imputed.wvs.sum[[1]]$constant, # add state intercepts
-                           imputed.wvs.sum[[draw]][, 3:10]),
-      # state level variables
-      J = ncol(imputed.state.yr.final[[draw]][, 3:11]),
-      Z = imputed.state.yr.final[[draw]][, 3:11],
-      # year/US/system level vars
-      L = ncol(us.data.final),
-      G = us.data.final,
-      # state-year indicators
-      state = imputed.wvs.sum[[draw]]$cntry.id,
-      S = length(unique(imputed.wvs.sum[[draw]]$cntry.id))
-    )
-    
-    # stan model fit
-    fit.wvs.bin.indiv <- stan.model.bin.indiv$sample(
-      data = stan.data.binom.indiv,
-      seed = 12,
-      iter_warmup = 1000,
-      iter_sampling = 1000,
-      chains = 4,
-      parallel_chains = 4,
-      refresh = 200,
-      max_treedepth = 20,
-      adapt_delta = .98
-    )
-    
-    # print diagnostics
-    fit.wvs.bin.indiv$cmdstan_diagnose()
-    
-    draws.binom.indiv[[i]] <- as_draws_df(fit.wvs.bin.indiv$draws()) 
-    
-  }
-)
-
-# combine draws into a full posterior
-saveRDS(draws.binom.indiv, "data/draws-all-indiv.RDS")
-# keep only year-level vars in workspace
-draws.binom.indiv <- select(bind_rows(draws.binom.indiv), starts_with("lambda"))
-
-
-mcmc_intervals(draws.binom.indiv, pars = vars(param_range("lambda", c(2:11))),
-               prob = .9, point_est = "median") + 
-  geom_vline(xintercept = 0) +
-  scale_y_discrete(
-    labels = lambda.labs) +
-  ggtitle("Year Level: US Success")
-ggsave("appendix/year-var-indiv.png", height = 6, width = 8)
-
-# trump parameter is 94% negative
-mean(draws.binom.indiv$`lambda[8]` < 0)
