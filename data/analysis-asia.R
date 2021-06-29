@@ -233,7 +233,7 @@ for(i in 1:length(draws.asia)){
       growth_WDI_PW + Trump,
     data = filter(imputed.wvs.asia[[i]], ccode == ccode.asia.set[c]), 
     family = cumulative(link = "logit", threshold = "flexible"),
-    iter = 2000,
+    iter = 1600,
     chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
     control = list(max_treedepth = 15, adapt_delta = .85),
     prior = c(set_prior(prior = "normal(0, 2)", class = "Intercept"),
@@ -241,7 +241,7 @@ for(i in 1:length(draws.asia)){
   )
   }
   draws.asia[[i]] <- country.models
-} # 16 hours total
+} # 18 hours total
 )
 
 # combine draws into a full posterior
@@ -271,7 +271,7 @@ asia.pars.state <- lapply(draws.asia.comb, function(x)
 asia.pars.state <- bind_rows(asia.pars.state,
                              .id = "ccode") 
 asia.pars.state$term <- rep(rownames(as.data.frame(fixef(draws.asia[[1]][[1]]))),
-                            9)
+                            12)
 
 # rename variables and country names for plotting
 asia.pars.state$term[asia.pars.state$term == "interest.pol"] <- 

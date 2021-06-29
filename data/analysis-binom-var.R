@@ -199,7 +199,7 @@ filter(theta.pars, year >= 1994) %>%
   scale_color_manual(values = wes_palette("Zissou1")) +
   labs(x = "Year", y = "Probability of High Democratic Support",
        color = "President")
-
+ggsave("appendix/theta-reg.png", height = 6, width = 8)
 
 # Average by president 
 pres.avg <- filter(theta.pars.sum, year >= 1994) %>%
@@ -329,7 +329,7 @@ lambda.democ <- draws.binom.democ %>%
 lambda.democ <- as.data.frame(t(lambda.democ))
 colnames(lambda.democ) <- c("lower", "median", "upper")
 # add state and parameter labels
-lambda.democ$democ <- rep(c("Autocracy", "Middle", "Democracy"), each = 12)
+lambda.democ$democ <- rep(c("Autocracy", "Unstable", "Democracy"), each = 12)
 lambda.democ$param <- c("Democracy Group Intercept", "US GDP Growth", "US Democracy", "US Human Rights",
                         "US Protests", "US GINI", "Clinton", "W. Bush", 
                         "Obama", "Trump","Chinese Growth",

@@ -111,7 +111,7 @@ wvs[sample(nrow(wvs), size = 10000), ] %>%
 
 # Multiple imputation of missing data with sbgcop
 reg.data.wvs <- ungroup(wvs) %>%
-  filter(year <= 2018 & ccode > 6) %>% # cut down to match state-level data
+  filter(year <= 2019 & ccode > 6) %>% # cut down to match state-level data
   select(dem.app, army.rule, strong.ldr,
          interest.pol, trust.gen, country.aim,
          left.right, gov.conf, rate.pol.sys,
@@ -137,7 +137,7 @@ colnames(impute.wvs$Y.impute) <- colnames(reg.data.wvs)
 imputed.data.wvs <- vector(mode = "list", length = 20)
 for(i in 1:length(imputed.data.wvs)){
   imputed.data.wvs[[i]] <- cbind.data.frame(select(filter(ungroup(wvs),
-                                                year <= 2018 & ccode > 6), 
+                                                year <= 2019 & ccode > 6), 
                                                     ccode, year),
                                              impute.wvs$Y.impute[, , i]) %>%
     mutate(
@@ -171,7 +171,7 @@ load("data/Graham_Tucker_IPE_v4.Rdata")
 
 # cut down for relevant years 
 ipe_v4 <- ipe_v4 %>%
-           filter(year >= 1976 & year <= 2018) %>%
+           filter(year >= 1976 & year <= 2019) %>%
             select(ccode, year,
                    gdppc_WDI_PW, growth_WDI_PW, 
                    info_flow_KOF, soc_glob_KOF, bkcrisis_GFD, 
@@ -226,7 +226,8 @@ us.aid <- read.csv("data/us_foreign_aid_country.csv") %>%
            rename(
              year = fiscal_year,
              us.aid = constant_amount
-           )
+           ) %>%
+          mutate(us.aid = us.aid / 1000000)
 us.aid$ccode <- countrycode(us.aid$country_name, 
                          origin = "country.name",
                          destination = "cown") 
@@ -241,7 +242,7 @@ ipe_v4$us.aid[is.na(ipe_v4$us.aid)] <- 0 # years w/ no aid missing
 wvs$cntry.yr.id <- wvs %>% group_by(ccode, year) %>% group_indices()
 length(unique(wvs$cntry.yr.id))
 state.year.data <- wvs %>%
-                    filter(year <= 2018 & ccode > 6) %>% # match indiv data years
+                    filter(year <= 2019 & ccode > 6) %>% # match indiv data years
                     select(year, ccode, # pull id vars
                            cntry.yr.id) %>%
                     group_by(cntry.yr.id) %>%
@@ -258,6 +259,7 @@ state.year.data[duplicated(state.year.data[, 1:3]), ]
 state.year.data <- filter(state.year.data,
                           !(ccode == 365 & year == 1990 &
                             gini_disp == 24.4))
+state.year.data$us.aid[is.na(state.year.data$us.aid)] <- 0 # years w/ no aid missing
 
 # visualize missing
 vis_miss(state.year.data)
@@ -438,8 +440,8 @@ us.data.final <- filter(us.data.five,
 vis_miss(us.data.final)
 
 # lag fariss HR: average of last two observed years
-#us.data.final$fariss_hr[
-#  is.na(us.data.final$fariss_hr)] <- (0.28316380 + 0.29497110) / 2
+us.data.final$fariss_hr[
+  is.na(us.data.final$fariss_hr)] <- (0.28316380 + 0.29497110) / 2
 
 
 # variation in HR and democ 

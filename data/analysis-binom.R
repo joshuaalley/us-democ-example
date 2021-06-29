@@ -168,7 +168,6 @@ draws.binom <- bind_rows(draws.binom)
 
 # diagnostics
 mcmc_trace(draws.binom, pars = vars(param_range("lambda", c(1:12))))
-ggsave("appendix/lambda-trace.png", height = 6, width = 8)
 
 # look at dispersion and other key params
 mcmc_intervals(draws.binom, pars = c("sigma", "sigma_state", "sigma_year"),
@@ -197,7 +196,7 @@ plot.us <- mcmc_intervals(draws.binom, pars = vars(param_range("lambda", c(2:11)
                geom_vline(xintercept = 0) +
                scale_y_discrete(
                 labels = lambda.labs) +
-             ggtitle("Year Level: US Success")
+             ggtitle("Year Level: US Performance")
 plot.us
 colnames(stan.data.binom$G)
 mean(draws.binom$`lambda[10]` < 0)
@@ -232,7 +231,6 @@ ml.res <- arrangeGrob(plot.indiv, plot.state, plot.us,
                       layout_matrix = rbind(c(1, 2),
                                             c(3, 3))
 )
-ggsave("appendix/ml-res.png", ml.res, height = 6, width = 8)
 
 
 
