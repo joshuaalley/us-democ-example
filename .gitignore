@@ -36,3 +36,7 @@
 # Ignore Packrat library
 packrat/*
 packrat/lib*/
+
+# other files- not relevant
+old-files/* 
+literature/* 
