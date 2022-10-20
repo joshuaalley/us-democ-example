@@ -58,10 +58,10 @@ datasummary_skim(wvs.sum, fmt = "%.2f",
 ### plot the raw data 
 imputed.dem.prop <- bind_rows(imputed.wvs.sum) %>%
                      select(high.democ.sum, n.res,
-                            cntry.yr.id, year.id) %>%
+                            ccode, year) %>%
                      mutate(high.democ.prop = high.democ.sum / n.res) %>%
                      left_join(select(imputed.state.yr[[1]],
-                                      ccode, year, cntry.yr.id)) %>%
+                                      ccode, year)) %>%
                      left_join(filter(us.data.five,
                                       year %in% unique(state.year.data$year)) %>%
                                  mutate(
@@ -167,7 +167,7 @@ draws.binom[[i]] <- as_draws_df(fit.wvs.bin$draws())
 draws.binom <- bind_rows(draws.binom)
 
 # diagnostics
-mcmc_trace(draws.binom, pars = vars(param_range("lambda", c(1:12))))
+mcmc_trace(draws.binom, pars = vars(param_range("lambda", c(1:10))))
 
 # look at dispersion and other key params
 mcmc_intervals(draws.binom, pars = c("sigma", "sigma_state", "sigma_year"),
@@ -176,8 +176,7 @@ mcmc_intervals(draws.binom, pars = c("sigma", "sigma_state", "sigma_year"),
 # vectors of parameter names 
 colnames(stan.data.binom$G) # omit constant in year-level reg
 lambda.labs = c("US GDP Growth", "US Democracy", "US Human Rights",
-                "US Protests", "US GINI", "Clinton", "W. Bush", 
-                "Obama", "Trump","Chinese Growth",
+                "US Protests", "US GINI", "Repub. Pres", "Trump","Chinese Growth",
                 "US Intervention")
 colnames(stan.data.binom$Z)
 gamma.labs = c("GDP per Capita", "GDP Growth", "Information Flow",
@@ -199,7 +198,7 @@ plot.us <- mcmc_intervals(draws.binom, pars = vars(param_range("lambda", c(2:11)
              ggtitle("Year Level: US Performance")
 plot.us
 colnames(stan.data.binom$G)
-mean(draws.binom$`lambda[10]` < 0)
+mean(draws.binom$`lambda[8]` < 0)
 mcmc_intervals(draws.binom, pars = vars(param_range("alpha_year", c(1:28))))
 # state-year level 
 plot.state <- mcmc_intervals(draws.binom, regex_pars = "gamma",

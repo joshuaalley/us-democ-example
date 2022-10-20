@@ -19,7 +19,8 @@ library(gridExtra)
 library(modelsummary)
 library(brms)
 library(wesanderson)
- 
+library(sn) 
+
 # manage conflicts 
 conflict_scout()
 conflict_prefer("filter", "dplyr")
@@ -30,6 +31,9 @@ conflict_prefer("rhat", "posterior")
 conflict_prefer("ess_bulk", "posterior")
 conflict_prefer("ess_tail", "posterior")
 conflict_prefer("combine", "dplyr")
+conflict_prefer("sd", "posterior")
+conflict_prefer("mad", "posterior")
+conflict_prefer("var", "stats")
 
 # set seed
 set.seed(12)

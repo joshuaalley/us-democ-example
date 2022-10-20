@@ -35,7 +35,7 @@ We used version 1.6 of the World Values survey longitudinal data, which can be d
 
 
 
-The varying slopes model lets the relationship between U.S. success and other year-level factors shift across regions, rather than assuming a constant effect. 
+The varying slopes model lets the relationship between U.S. performance and other year-level factors shift across regions, rather than assuming a constant effect. 
 The binomial model of the proportion of high democratic support given the number of respondents within each state-year group can be expressed as follows, with the probability of high support $\theta$ for each country-year observation partially pooled such that ~ $\theta_i \sim N(\mu_i, \sigma)$ : 
 
 
@@ -91,24 +91,16 @@ $ p(\gamma) \sim \mbox{student-t}(5, 0, 1) $
 \section{Hamiltonian Monte Carlo Diagnostics}
 
 We fit these models with STAN \citep{Carpenteretal2016}.
-There were no divergent iterations in either sample running 4 chains for 2,000 iterations with 1,000 warmup iterations in any of the imputed datasets.  
+There were no divergent iterations in either sample running 4 chains for 2,000 iterations with 1,000 warm up iterations in any of the imputed datasets.  
 The split $\hat{R}$ statistic is less than 1.1 for all parameters as well.
-Energy diagnostics and the effective sample size for the potsterior medians and tails were also satisfactory.  
+Energy diagnostics and the effective sample size for the posterior medians and tails are also satisfactory.  
 All of these estimates suggest that the Hamiltonian Monte Carlo adequately explored the posterior distribution. 
 
 
 \section{Variables}
 
 
-This section summarizes the key variables in the model. 
-The state and individual level variables account for other determinants of attitudes towards democracy. 
-State-year variables include income inequality, GDP levels and growth, financial crisis presence, liberal democracy, human rights practices, civil war deaths, U.S. aid disbursements and globalization. 
-We use the VDEM measure of democracy for the U.S. and other states as it is a common measure of democratic quality \citep{WaldnerLust2018}.
-We control for U.S. aid disbursements, measured in millions of constant dollars, to ensure that our leadership findings do not reflect changes in investment in democracy promotion and aid more generally, especially during the Trump administration.\footnote{Data on U.S. democracy promotion aid has unfortunate temporal limitations.} 
-We also adjust for individual political ideology, perceptions of domestic political institutions, and economic security.
-
-
-In the remainder of this section, we tabulate the variables at each level of analysis. 
+This section summarizes the key variables in the model with tabulations. 
 We start with the year-level variables that measure U.S. success and failure. 
 \autoref{tab:year-vars} summarizes these variables and their distribution. 
 \autoref{tab:state-vars} summarizes the state-level variables across all imputed datasets.
@@ -187,12 +179,25 @@ Number of Respondents & 172 & 0 & 1445.89 & 570.84 & 240.00 & 1212.00 & 4078.00\
 \end{table}
 
 
+\newpage 
+
+
 \section{Other Estimates}
 
 
-This section of the appendix summarizes other estimates from the multilevel model in the manuscript. 
-First, we describe estimates from the state and individual level variables in \autoref{fig:other-levels-vars}. 
-Then we plot the estimated probability of strong democratic support across post Cold War presidents in \autoref{fig:theta-est}. 
+This section of the appendix summarizes state and individual level variable estimates from the multilevel model in the manuscript.
+Some individual and state-level variables also impact support for democracy outside the United States, as \autoref{fig:other-levels-vars} shows. 
+Because we average the individual variables at the country-year level to facilitate binomial model fitting, the individual coefficient estimates compare averages across observations.
+Higher average ratings of the political system and confidence in the government in a country increase the likelihood of high democratic support. 
+Countries where individuals are more right-wing on average express lower support for democracy. 
+The nationalism and financial satisfaction averages are also negative, but are more uncertain. 
+%Then we plot the estimated probability of strong democratic support across post Cold War presidents in \autoref{fig:theta-est}. 
+
+
+
+At the state level, GDP per capita is positively associated with high democratic support. 
+The GDP growth, human rights and liberal democracy coefficient estimates are largely positive, but consistent with slight negative relationships. 
+The income inequality and social globalization coefficients are mostly negative with substantial uncertainty. 
 
 
 \begin{figure}
@@ -202,54 +207,43 @@ Then we plot the estimated probability of strong democratic support across post 
 \end{figure}
 
 
-Some individual and state-level variables also impact support for democracy outside the United States. 
-Because we average the individual variables at the country-year level to facilitate binomial model fitting, the individual coefficient estimates compare averages across observations.
-Higher average ratings of the political system and confidence in the government in a country increase the likelihood of high democratic support. 
-Countries where individuals are more right-wing on average express lower support for democracy. 
-The nationalism and financial satisfaction averages are also negative, but are more uncertain.
+%\begin{figure}
+%\includegraphics[width = .95\textwidth]{theta-est.png}
+%\caption{Estimated probability of high democratic support in country-year observations from 1994 to 2019, with averages by presidential administration. In the top panel, each point marks the estimated probability of high democratic support in a country-year observation, and the error bars summarize the 90\% credible interval. The bottom panel is the average of the posterior medians for each president. Estimates from before 1994 omitted to make the plot more legible.  }
+%\label{fig:theta-est} 
+%\end{figure}
+%
+%
+%\autoref{fig:theta-est} plots the estimated probability of high democratic support for each country-year observation in the WVS from 1994 to 2019. 
+%Each point is the estimated $\theta$ parameter in the binomial logit model.
+%This is the probability of a success ---high democratic support--- in the number of binomial trials given by the number of respondents. 
+%
+%
+%There are some notable patterns in democratic support over time.
+%The first is that the average of the $\theta$ parameters by President declines gradually over time, then drops dramatically during the Trump administration.  
+%The Trump average reflects a cluster of state-year observations with low probabilities of high democratic support. 
+%Interestingly, several estimates from the Trump administration are higher than any from the Obama administration, which might suggest global polarization in democratic support. 
 
-
-At the state level, GDP per capita is positively associated with high democratic support. 
-The GDP growth, human rights and liberal democracy coefficient estimates are largely positive, but consistent with slight negative relationships. 
-The income inequality and social globalization coefficients are mostly negative with substantial uncertainty. 
-
-
-\begin{figure}
-\includegraphics[width = .95\textwidth]{theta-est.png}
-\caption{Estimated probability of high democratic support in country-year observations from 1994 to 2019, with averages by presidential administration. In the top panel, each point marks the estimated probability of high democratic support in a country-year observation, and the error bars summarize the 90\% credible interval. The bottom panel is the average of the posterior medians for each president. Estimates from before 1994 omitted to make the plot more legible.  }
-\label{fig:theta-est} 
-\end{figure}
-
-
-\autoref{fig:theta-est} plots the estimated probability of high democratic support for each country-year observation in the WVS from 1994 to 2019. 
-Each point is the estimated $\theta$ parameter in the binomial logit model.
-This is the probability of a success ---high democratic support--- in the number of binomial trials given by the number of respondents. 
-
-
-There are some notable patterns in democratic support over time.
-The first is that the average of the $\theta$ parameters by President declines gradually over time, then drops dramatically during the Trump administration.  
-The Trump average reflects a cluster of state-year observations with low probabilities of high democratic support. 
-Interestingly, several estimates from the Trump administration are higher than any from the Obama administration, which might suggest global polarization in democratic support. 
-
+\newpage 
 
 \section{Trump and Democratic Support in Asia}
 
 The models in the manuscript find a negative impact of the Trump administration on support for democracy in Asia. 
 In this section of the appendix, we explore that finding further. 
-To do so, we fit separate models to each state in Asia that had WVS data before and after Trump took office in early 2017. 
+To do so, we fit separate models for each Asian state with WVS data before and after Trump took office in early 2017. 
 
 
 Fitting separate models for each state is a simple way to assess whether the impact of the Trump administration and other factors varies by country. 
 It also allows us to draw on the full range of the democratic support variable, instead of simplifying it to a dummy, as in the manuscript. 
 Because democratic support takes on relatively few integer values, we fit Bayesian ordinal logit models with flexible outcome thresholds using BRMS \citep{Buerkner2017}.
-The lack of cross-sectional variation in these analyses meant we could only include two state and year level variables without introducing perfect multicollinearity into the model. 
+The lack of cross-sectional variation and limited number of years in these analyses meant we could only include two state and year level variables without introducing perfect multicollinearity into the model. 
 We therefore included a national economic growth variable and the Trump administration dummy, in addition to a series of controls at the individual level. 
 For each state, we fit models to five imputed datasets, and then combined them into a single posterior, following standard practice. 
 
 
 We find that the Trump presidency reduced support for democracy throughout Asia. 
 \autoref{fig:asia-state-trump} plots the estimated coefficient on the Trump administration dummy variable from each model of democratic support over time in Asian states. 
-Most of the coefficient estimates are negative, and most are substantively large as well. 
+Most of the coefficient estimates are negative and substantively large as well. 
 
 
 \begin{figure}
@@ -259,15 +253,15 @@ Most of the coefficient estimates are negative, and most are substantively large
 \end{figure}
 
 
-The Trump effect is largest in Bangladesh, but this may reflect that only three WVS waves covered Bangladesh, which creates limited temporal variation in that model. 
+The Trump effect is largest in Bangladesh, but this may reflect only three WVS waves in Bangladesh, which creates limited temporal variation in that model. 
 The Kazakhstan coefficient has substantial uncertainty for similar reasons. 
-Only in Australia is the Trump administration correlated with increased democratic support. 
+Only in Australia and Japan is the Trump administration correlated with increased democratic support. 
 
 
 Indonesia, Thailand, Taiwan, the Philippines, South Korea, Pakistan, Malaysia and China all saw lower public support for democracy during the Trump administration. 
 The common change in a group with such varied characteristics gives some credence to a common trend or shock. 
 The mechanism likely differs across these countries, however. 
-South Korea and the Philippines are U.S. treaty allies and Taiwan has close ties to the United States. 
+South Korea and the Philippines are U.S. allies and Taiwan has close ties to the United States. 
 China's relationship with the Trump administration was often antagonistic. 
 Pakistan has some ties to the U.S., along with close relations with China. 
 
@@ -278,15 +272,15 @@ Pakistan has some ties to the U.S., along with close relations with China.
 \section{WVS Coverage by Region and Presidency}
 
 
-It is also possible that we estimate a negative relationship between Trump and democratic support in Asia but not in other regions due to better data coverage in that region. 
-The WVS proceeds country by country, and our sample lacks data on key variables in 2020, so we lose out on data from later in the seventh wave.\footnote{With completely missing data for most countries, imputation has less value.}
+Here, we detail data coverage in the WVS across regions during our sample. 
+The WVS proceeds country by country, and our sample lacks data on key control variables in 2020, so we lose out on data from later in the seventh wave.\footnote{With completely missing data for most countries, imputation has less value.}
 Thus, as \autoref{fig:theta-reg} shows, we have more estimates for countries in Asia and consistent coverage of the Americas, with more sparse coverage in Africa and Europe. 
 
 
 
 \begin{figure}
 \includegraphics[width = .95\textwidth]{theta-reg.png}
-\caption{Estimated probability of high democratic support by region from multilevel model with regional varying slopes. Colors differentiate between presidential administrations. MENA stands for Middle East and North Africa.}
+\caption{Estimated probability of high democratic support by region from multilevel model with regional varying slopes, 1989 to 2019. Colors differentiate between presidential administrations. MENA stands for Middle East and North Africa.}
 \label{fig:theta-reg} 
 \end{figure}
 
@@ -297,14 +291,14 @@ Although the Trump presidency is negatively associated with democratic support i
 
 
 The likely patterns in Europe are less clear. 
-On the one hand, the Australian and Japanese estimates from the analysis of Asian countries suggests that the Trump administration was less likely to damage perceptions of democracy among wealthy consolidated democracies.
+On the one hand, the Australian and Japanese estimates from our analysis of Asian countries suggests that the Trump administration was less likely to damage perceptions of democracy among wealthy consolidated democracies.
 On the other, democratic support fell in South Korea and Taiwan during the Trump administration.
-Thus, Trump may have done little damage to democratic support in Europe, or reduced support in countries he frequently interacted with. 
+Thus, Trump may have done little damage to democratic support in Europe, or reduced support in some countries, or driven up support for democracy through some backlash mechanism. 
 
 
 \autoref{fig:theta-reg} further indicates that the largely negative association between the Clinton administration and support for democracy in the Middle East and North Africa is likely the result of sparse data. 
 There are only two countries with WVS data during the Clinton administration. 
-Larger samples from the region during other presidencies show substantial variation in support for democracy that drives up average democratic support. 
+Larger samples from the region during other presidencies show substantial variation in support for democracy and higher average democratic support. 
 
 
 %\section{Democracy and the Trump Effect} 

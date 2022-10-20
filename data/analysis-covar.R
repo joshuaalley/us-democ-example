@@ -7,35 +7,14 @@
 ### take the state and system-year variables and places them on a single level
 
 # create dataset at one level
-us.data.single <- filter(us.data.five,
-                         year %in% unique(state.year.data$year)) %>%
-  mutate(
-    # add presidential partisanship
-    rep_pres = ifelse((year >= 1981 & year <= 1992) | # Reagan/Bush
-                        (year >= 2001 & year <= 2008),  # HW Bush
-                      1, 0),
-    # and cold war
-    post_cold_war = ifelse(year >= 1991, 1, 0),
-    constant = 1
-  ) %>% # add protest data
-  left_join(gdelt.protests) %>% # select key
-  select(year, growth_WDI_PW, perc.protest, v2x_libdem_VDEM,
-         fariss_hr, gini_disp, 
-         Clinton, W.Bush, Obama, Trump,
-         chinese_growth, war_outcome) %>%
+us.data.single <- us.data.final %>%
   rename(us_hr = fariss_hr,
          us_growth = growth_WDI_PW,
          us_ineq = gini_disp,
-         us_vdem = v2x_libdem_VDEM)
+         us_vdem = v2x_libdem_VDEM) %>%
+  bind_cols(select(filter(us.data.five, year >= 1995 & year != 2015), year))
 glimpse(us.data.single)
 
-# lag fariss HR: average of last two observed years
-# us.data.single$us_hr[
-#   is.na(us.data.single$us_hr)] <- (0.28316380 + 0.29497110) / 2
-
-# rescale by 2sd 
-us.data.single[, 2:12] <-  apply(us.data.single[, 2:12], 2, 
-                                function(x) arm::rescale(x, binary.inputs = "0/1"))
 
 # imputed state data rs
 imputed.state.yr.rs <- vector(mode = "list", length = 20)
@@ -67,6 +46,9 @@ for(i in 1:length(data.single)){
 # take 5 at random
 data.single <- sample(data.single, size = 5, replace = FALSE)
 
+# save data for loading to Rivanna
+saveRDS(data.single, file = "data/rivanna-data.rds")
+
 # create data list
 stan.data.single <- list(
   N = nrow(data.single[[1]]),
@@ -87,6 +69,10 @@ stan.data.single <- list(
 # Limited redundant calculation gains w/ state variables
 nrow(stan.data.single$X)
 nrow(distinct(stan.data.single$X))
+
+
+### Brm_multiple it 
+
 
 # compile cmdstan model
 stan.model.cmd.covar <- cmdstan_model("data/ml-model-wvs-reduce-covar.stan",

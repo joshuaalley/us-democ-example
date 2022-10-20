@@ -323,7 +323,7 @@ ggplot(filter(asia.pars.state,
   scale_color_brewer(palette = "Paired") +
   labs(x = "Trump Coefficient Estimate",
        y = "Country",
-       title = "Impact of Trump Presidency\non Democratic Support in Asian Countries") 
+       title = "Association Between Trump Presidency\nand Democratic Support in Asian Countries") 
 ggsave("appendix/asia-state-trump.png", height = 6, width = 8)
 
 

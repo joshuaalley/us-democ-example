@@ -3,24 +3,27 @@
 
 
 # Load WVS data
-wvs <- readRDS("data/WVS_TimeSeries_R_v1_2.RDS")
-# pull key variables w/o loading packages (example data maxes out RAM)
-wvs <- select(wvs, S002, COW_NUM, COW_ALPHA,
+wvs <- readRDS("data/WVS_TimeSeries_1981_2020_R_v2_0.rds")
+# pull key variables
+wvs <- select(wvs, S012, S002VS, COW_NUM, COW_ALPHA,
                      S007, S020, S025, A165, C006,
                      E001, E023, E033, E069_11,
                      E111, E114, E116, E117, E119, E120, E121, E122, E123,
                      E235, E236,
-                     X025A2, Y011A, Y011B, X003, X001
+                     Y011A, Y011B, X003, X001
 ) 
+
+# X025A2,  X025A2: education MIA
 
 
 # rename variables
 wvs <- wvs %>%
              rename(
-               wvs.wave = S002,
+               wvs.wave = S002VS,
                resp.num = S007,
                ccode = COW_NUM,
                cname = COW_ALPHA,
+               date = S012,
                year = S020,
                cntry.year = S025,
                trust.gen = A165,
@@ -40,20 +43,27 @@ wvs <- wvs %>%
                dem.prob.bet = E123,
                dem.import = E235,
                own.democ = E236,
-               education = X025A2,
                resp.auth = Y011A,
                nationalism = Y011B,
                age = X003,
                gender = X001,
              ) %>%
             mutate(
+              month = as.numeric(substr(date, 5, 6)),
               region = ifelse(ccode < 200, 1, # Americas 
                          ifelse(ccode %in% 200:400, 2, # Europe
                            ifelse(ccode > 400 & ccode < 600, 3, # subs Africa
                              ifelse(ccode >= 600 & ccode < 700, 4, # MENA
-                               ifelse(ccode > 700, 5, 0))))) # Asia
-            )
+                               ifelse(ccode > 700, 5, 0))))), # Asia
+              date = ymd(date)
+            ) %>%
+            filter(wvs.wave >= 3)
 glimpse(wvs)
+
+table(wvs$year, wvs$month)
+
+# - is missing or don't know, etc
+wvs[wvs < 0] <- NA
 
 # create democratic support index like that of krieckhaus et al and others 
 # 4 is very bad 
@@ -64,6 +74,7 @@ table(wvs$strong.ldr)
 # army rule
 table(wvs$army.rule)
 wvs$army.rule <- recode(as.numeric(wvs$army.rule), `4` = 3, `3` = 2, `2` = 1, `1` = 0)
+table(wvs$army.rule)
 # approval
 table(wvs$dem.app)
 wvs$dem.app <- recode(as.numeric(wvs$dem.app), `4` = 0, `3` = 1, `2` = 2, `1` = 3)
@@ -111,7 +122,6 @@ wvs[sample(nrow(wvs), size = 10000), ] %>%
 
 # Multiple imputation of missing data with sbgcop
 reg.data.wvs <- ungroup(wvs) %>%
-  filter(year <= 2019 & ccode > 6) %>% # cut down to match state-level data
   select(dem.app, army.rule, strong.ldr,
          interest.pol, trust.gen, country.aim,
          left.right, gov.conf, rate.pol.sys,
@@ -136,8 +146,7 @@ colnames(impute.wvs$Y.impute) <- colnames(reg.data.wvs)
 # Pull imputed data into a list
 imputed.data.wvs <- vector(mode = "list", length = 20)
 for(i in 1:length(imputed.data.wvs)){
-  imputed.data.wvs[[i]] <- cbind.data.frame(select(filter(ungroup(wvs),
-                                                year <= 2019 & ccode > 6), 
+  imputed.data.wvs[[i]] <- cbind.data.frame(select(ungroup(wvs), 
                                                     ccode, year),
                                              impute.wvs$Y.impute[, , i]) %>%
     mutate(
@@ -171,12 +180,14 @@ load("data/Graham_Tucker_IPE_v4.Rdata")
 
 # cut down for relevant years 
 ipe_v4 <- ipe_v4 %>%
-           filter(year >= 1976 & year <= 2019) %>%
+           filter(year >= 1994 & year <= 2020) %>%
             select(ccode, year,
                    gdppc_WDI_PW, growth_WDI_PW, 
                    info_flow_KOF, soc_glob_KOF, bkcrisis_GFD, 
                    polity2_P4, v2x_libdem_VDEM, 
-                   bdeadbest_BD)
+                   bdeadbest_BD) %>%
+            group_by(ccode) 
+
 # democracy_share_DE may be of interest later
 # Check missing data
 vis_miss(ipe_v4)
@@ -236,13 +247,19 @@ us.aid$ccode <- countrycode(us.aid$country_name,
 us.aid$year <- as.numeric(us.aid$year)
 ipe_v4 <- left_join(ipe_v4, select(us.aid, ccode, year, us.aid))
 ipe_v4$us.aid[is.na(ipe_v4$us.aid)] <- 0 # years w/ no aid missing
+
+# lag everything
+ipe_v4 <- ipe_v4 %>%
+  group_by(ccode) %>%
+  mutate(across(gdppc_WDI_PW:gini_disp, ~ lag(.x)))
  
 
 # find unique ccode-year pairs in WVS
 wvs$cntry.yr.id <- wvs %>% group_by(ccode, year) %>% group_indices()
 length(unique(wvs$cntry.yr.id))
+
+# base state year data
 state.year.data <- wvs %>%
-                    filter(year <= 2019 & ccode > 6) %>% # match indiv data years
                     select(year, ccode, # pull id vars
                            cntry.yr.id) %>%
                     group_by(cntry.yr.id) %>%
@@ -256,9 +273,6 @@ state.year.data <- wvs %>%
 
 # duplicated: USSR/Russia from GINI
 state.year.data[duplicated(state.year.data[, 1:3]), ]
-state.year.data <- filter(state.year.data,
-                          !(ccode == 365 & year == 1990 &
-                            gini_disp == 24.4))
 state.year.data$us.aid[is.na(state.year.data$us.aid)] <- 0 # years w/ no aid missing
 
 # visualize missing
@@ -365,18 +379,12 @@ ggplot(us.data, aes(x = year, y = v2x_libdem_VDEM)) +
 
 # add Chinese economic growth
 us.data <- cbind.data.frame(us.data,
-                            select(filter(ipe_v4, ccode == 710),
+                            select(filter(ungroup(ipe_v4), ccode == 710),
                             growth_WDI_PW))
 colnames(us.data)[length(colnames(us.data))] <- "chinese_growth"
 
 
-# # average all over prior five years
-# lag all
-five.year <- apply(us.data[3:ncol(us.data)], 2, 
-                  function(x) lag(x))
-
-us.data.five <- cbind(select(us.data, year), five.year) %>%
-                  filter(year >= 1980)
+us.data.five <- us.data %>% filter(year >= 1995)
 summary(us.data.five$year)
 
 # create variable with indicators of war participation and victory 
@@ -435,13 +443,18 @@ us.data.final <- filter(us.data.five,
               left_join(gdelt.protests) %>% # select key
              select(constant, growth_WDI_PW, v2x_libdem_VDEM,
                     fariss_hr, perc.protest, gini_disp, 
-                    Clinton, W.Bush, Obama, Trump,
+                    rep_pres, Trump,
                     chinese_growth, war_outcome)
 vis_miss(us.data.final)
 
 # lag fariss HR: average of last two observed years
 us.data.final$fariss_hr[
   is.na(us.data.final$fariss_hr)] <- (0.28316380 + 0.29497110) / 2
+# chinese economic growth: https://www.bbc.com/news/business-56768663
+us.data.final$chinese_growth[is.na(us.data.final$chinese_growth)] <- 2.3
+us.data.final$gini_disp[is.na(us.data.final$gini_disp)] <- .48
+us.data.final$growth_WDI_PW[is.na(us.data.final$growth_WDI_PW)] <- -3.5
+us.data.final$perc.protest[is.na(us.data.final$perc.protest)] <- 1.1
 
 
 # variation in HR and democ 
@@ -460,8 +473,7 @@ glimpse(us.data.final)
 # summary table
 us.data.sum <- select(us.data.final, -constant)
 colnames(us.data.sum) <- c("US GDP Growth", "US Democracy", "US Human Rights",
-                            "US Protests", "US GINI", "Clinton", "W.Bush",
-                            "Obama", "Trump Pres", "Chinese Growth",
+                            "US Protests", "US GINI", "Republican Pres", "Trump Pres", "Chinese Growth",
                             "US Intervention")
 datasummary_skim(us.data.sum, fmt = "%.2f",
                  title = "Year Level Variables",
@@ -469,7 +481,7 @@ datasummary_skim(us.data.sum, fmt = "%.2f",
                  output = "appendix/year-vars.tex")
 
 # rescale by 2sd 
-us.data.final[, 2:12] <-  apply(us.data.final[, 2:12], 2, 
+us.data.final[, 2:10] <-  apply(us.data.final[, 2:10], 2, 
                                function(x) arm::rescale(x, binary.inputs = "0/1"))
 glimpse(us.data.final)
 

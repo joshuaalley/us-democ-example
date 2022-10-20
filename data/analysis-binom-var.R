@@ -14,7 +14,7 @@ us.data.single.long <- left_join(select(imputed.state.yr[[1]], ccode, year),
                                  cbind.data.frame(us.data.final, filter(us.data.five,
                                                                         year %in% unique(state.year.data$year))%>%
                                                     select(year))
-)%>%
+) %>%
   select(-c(ccode, year))
 glimpse(us.data.single.long)
 
@@ -111,7 +111,7 @@ ggplot(lambda.var, aes(y = median, x = factor(region),
   geom_point() +
   labs(x = "Country Code", y = "Posterior Median Slope",
        color = "Region") +
-  theme(axis.text.x = element_blank())
+    theme(axis.text.x = element_blank())
 
 # plot by region
 for(i in 1:length(unique(lambda.var$region))){
@@ -128,9 +128,7 @@ for(i in 1:length(unique(lambda.var$region))){
 
 
 
-# plot theta parameters 
-mcmc_intervals(draws.binom.var, pars = vars(param_range("theta", c(1:268))),
-               prob = .9, point_est = "median")
+# plot theta parameters:
 # draw theta pars, get quantiles
 theta.pars <- t(select(draws.binom, starts_with("theta")) %>% 
                   summarise(across(everything(), list( ~quantile(., probs = c(0.05, 0.5, .95))))))
@@ -197,7 +195,7 @@ filter(theta.pars, year >= 1994) %>%
                   position=position_jitter(width=0.5),
                   alpha = .75) +
   scale_color_manual(values = wes_palette("Zissou1")) +
-  labs(x = "Year", y = "Probability of High Democratic Support",
+  labs(x = "Year", y = "Estimated Probability of High Democratic Support",
        color = "President")
 ggsave("appendix/theta-reg.png", height = 6, width = 8)
 
@@ -220,6 +218,7 @@ pres.theta <- filter(theta.pars, year >= 1994) %>%
   geom_pointrange(aes(ymin = lower, ymax = upper), 
                   position=position_jitter(width=0.5)) +
   scale_colour_grey() +
+  #scale_color_manual(values = wes_palette("Zissou1")) +
   labs(x = "Year", y = "Probability of High Democratic Support",
        color = "President",
        title = "Estimated Probability of High Democratic Support: 1994-2018")
@@ -258,6 +257,9 @@ other.levels.vars <- arrangeGrob(plot.indiv.vars, plot.state.vars, nrow = 2)
 ggsave("appendix/other-levels-vars.png", other.levels.vars, height = 6, width = 8)
 
 
+# plot year intercepts 
+mcmc_intervals(draws.binom.var, regex_pars = "alpha_year",
+               prob = .9, point_est = "median")
 
 
 
@@ -361,3 +363,67 @@ for(i in 1:length(unique(lambda.democ$democ))){
     ggtitle(unique(lambda.democ$democ)[i])
   print(plot)
 }
+
+
+
+
+### Fit model with only a Trump dummy ### 
+
+# Loop over 5 imputed datasets
+# define list of draws
+draws.binom.var <- vector(mode = "list", (length = 5))
+# same data numbers drawn (stan.data.binom.draw)
+
+# loop over five imputed datasets and fit the model to each
+system.time(
+  for(i in 1:length(draws.binom.var)){
+    
+    draw = stan.data.binom.draw[i]  
+    # set up stan data 
+    # create data list
+    stan.data.binom.var <- list(
+      N = nrow(imputed.wvs.sum[[draw]]),
+      n_res = imputed.wvs.sum[[draw]]$n.res,
+      y = imputed.wvs.sum[[draw]]$high.democ.sum,
+      # year/system indicators
+      year = imputed.wvs.sum[[draw]]$year.id,
+      T = length(unique(imputed.wvs.sum[[draw]]$year.id)),
+      # individual level variables
+      I = ncol(imputed.wvs.sum[[draw]][, 3:10]),
+      X = imputed.wvs.sum[[draw]][, 3:10],
+      # state level variables
+      J = ncol(imputed.state.yr.final[[draw]][, 3:12]),
+      Z = imputed.state.yr.final[[draw]][, 3:12],
+      # year/US/system level vars
+      L = ncol(us.data.single.long),
+      G = us.data.single.long,
+      # regional indicators
+      R = length(unique(imputed.wvs.sum[[1]]$region)),
+      group = imputed.wvs.sum[[1]]$region
+    )
+    
+    # stan model fit
+    fit.wvs.bin.var <- stan.model.bin.var$sample(
+      data = stan.data.binom.var,
+      seed = 12,
+      iter_warmup = 1000,
+      iter_sampling = 1000,
+      chains = 4,
+      parallel_chains = 4,
+      refresh = 200,
+      max_treedepth = 20,
+      adapt_delta = .95
+    )
+    
+    # print diagnostics
+    fit.wvs.bin.var$cmdstan_diagnose()
+    
+    draws.binom.var[[i]] <- as_draws_df(fit.wvs.bin.var$draws()) 
+    
+  }
+)
+
+# combine draws into a full posterior
+saveRDS(draws.binom.var, "data/draws-all-var.RDS")
+
+draws.binom.var <- bind_rows(draws.binom.var)
