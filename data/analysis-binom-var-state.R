@@ -119,11 +119,10 @@ lambda.vars <- draws.binom.vars %>%
 lambda.vars <- as.data.frame(t(lambda.vars))
 colnames(lambda.vars) <- c("lower", "median", "upper")
 # add state and parameter labels
-lambda.vars$cntry.id <- rep(seq(from = 1, to = 72, by = 1), each = 11)
+lambda.vars$cntry.id <- rep(seq(from = 1, to = 74, by = 1), each = 10)
 lambda.vars$param <- c("State Intercept", "US GDP Growth", "US Democracy", "US Human Rights",
                       "US Protests", "US GINI", "Republican Pres", "Trump Pres",
-                      "Post Cold War", "Chinese Growth",
-                      "US War Success")
+                      "Chinese Growth", "US War Success")
 # order labels as factor for plotting
 lambda.vars$param <- factor(lambda.vars$param, levels = unique(lambda.vars$param))
 # add ccode and cname

@@ -174,8 +174,74 @@ ggplot(imputed.data.wvs[[1]], aes(x = high.democ)) + geom_bar()
 ggplot(imputed.data.wvs[[1]], aes(x = agg.democ)) + geom_bar()
 
 
+# count by state-year group
+imputed.wvs.sum <- lapply(imputed.data.wvs, function(x)
+  x %>% group_by(cntry.yr.id) %>% 
+    summarize(high.democ.sum = sum(high.democ),
+              avg.interest.pol = mean(interest.pol),
+              avg.country.aim = mean(country.aim),
+              avg.left.right = mean(left.right),
+              avg.gov.conf = mean(gov.conf),
+              avg.rate.pol.sys = mean(rate.pol.sys),
+              avg.nationalism = mean(nationalism),
+              avg.financial.sat = mean(financial.sat),
+              avg.resp.auth = mean(resp.auth),
+              n.res = n(),
+              cntry.id = mean(cntry.id),
+              cntry.yr.id = mean(cntry.yr.id),
+              year.id = mean(year.id),
+              ccode = mean(ccode),
+              year = mean(year),
+              .groups = "keep"
+    ) %>%
+    mutate(
+      constant = 1,
+      region = ifelse(ccode < 200, 1, # Americas 
+                      ifelse(ccode %in% 200:400, 2, # Europe
+                             ifelse(ccode > 400 & ccode < 600, 3, # subs Africa
+                                    ifelse(ccode >= 600 & ccode < 700, 4, # MENA
+                                           ifelse(ccode > 700, 5, 0))))) # Asia
+    ) %>% 
+    left_join(democ.sum)
+) # end lapply
+glimpse(imputed.wvs.sum[[1]])
 
-### load country and year-level data
+
+# summary table: 1st imputed WVS dataset 
+wvs.sum <- bind_rows(imputed.wvs.sum) %>%
+  ungroup() %>%
+  select(-c(cntry.yr.id, ccode, year, cntry.id, year.id, region,
+            mean.democ, sd.democ, consol.democ, constant))
+colnames(wvs.sum) <- c("Sum: High Democ. Support",
+                       "Avg: Political Interest", "Avg: Country Aim", "Avg: Left or Right",
+                       "Avg: Government Confidence", "Avg: Rate Political System",
+                       "Avg: Nationalism", "Avg: Financial Satisfaction",
+                       "Avg: Respect Authority", "Number of Respondents")
+datasummary_skim(wvs.sum, fmt = "%.2f",
+                 title = "Individual Level Variables",
+                 histogram = FALSE,
+                 output = "appendix/wvs-vars.tex")
+
+
+
+### plot the raw data 
+imputed.dem.prop <- bind_rows(imputed.wvs.sum) %>%
+  ungroup() %>% 
+  select(high.democ.sum, n.res,
+         ccode, year) %>%
+  mutate(high.democ.prop = high.democ.sum / n.res) 
+
+# plot the raw data
+ggplot(imputed.dem.prop, aes(x = high.democ.prop)) + 
+  geom_histogram()
+# plot the raw data over time
+ggplot(imputed.dem.prop, aes(x = year, y = high.democ.prop)) + 
+  geom_count(alpha = .5)
+
+
+
+
+#### load country and year-level data ####
 load("data/Graham_Tucker_IPE_v4.Rdata") 
 
 # cut down for relevant years 
@@ -252,7 +318,22 @@ ipe_v4$us.aid[is.na(ipe_v4$us.aid)] <- 0 # years w/ no aid missing
 ipe_v4 <- ipe_v4 %>%
   group_by(ccode) %>%
   mutate(across(gdppc_WDI_PW:gini_disp, ~ lag(.x)))
+
+# add democracy measure: claassen
+cl.democ <- read.csv("data/democ_mood_est_v5.csv") %>%
+              rename(
+                year = Year
+              )  %>%
+              select(
+                ISO3c, year, SupDem
+              )
+cl.democ$ccode <- countrycode(cl.democ$ISO3c,
+                              origin = "iso3c",
+                              destination = "cown") 
+cl.data <- left_join(cl.democ, ipe_v4)
  
+
+
 
 # find unique ccode-year pairs in WVS
 wvs$cntry.yr.id <- wvs %>% group_by(ccode, year) %>% group_indices()

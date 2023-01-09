@@ -79,6 +79,22 @@ saveRDS(draws.binom.var, "data/draws-all-var.RDS")
 draws.binom.var <- bind_rows(draws.binom.var)
 
 
+# vectors of parameter names 
+colnames(stan.data.binom.var$G) # omit constant in year-level reg
+lambda.labs = c("US GDP Growth", "US Democracy", "US Human Rights",
+                "US Protests", "US GINI", "Repub. Pres", "Trump","Chinese Growth",
+                "US Intervention")
+colnames(stan.data.binom.var$Z)
+gamma.labs = c("GDP per Capita", "GDP Growth", "Information Flow",
+               "Social Globalization", "Bank Crisis",
+               "Liberal Democracy", "Conflict Battle Deaths", "Human Rights",
+               "Inequality", "U.S. Aid")
+colnames(stan.data.binom.var$X)
+beta.labs = c("Political Interest", "Country Aim", "Left or Right",
+              "Government Confidence", "Rate Political System",
+              "Nationalism", "Financial Satisfaction",
+              "Respect Authority")
+
 # illegible intervals: work with medians and facets
 lambda.var <- draws.binom.var %>% 
   select(starts_with("lambda")) %>%
@@ -88,7 +104,7 @@ colnames(lambda.var) <- c("lower", "median", "upper")
 # add state and parameter labels
 lambda.var$region <- rep(c("Americas", "Europe", "Sub-Saharan Africa",
                            "Middle East and North Africa",
-                           "Asia"), each = 12)
+                           "Asia"), each = 10)
 lambda.var$param <- c("Region Intercept", lambda.labs)
 # order labels as factor for plotting
 lambda.var$param <- factor(lambda.var$param, levels = unique(lambda.var$param))
@@ -130,7 +146,7 @@ for(i in 1:length(unique(lambda.var$region))){
 
 # plot theta parameters:
 # draw theta pars, get quantiles
-theta.pars <- t(select(draws.binom, starts_with("theta")) %>% 
+theta.pars <- t(select(draws.binom.var, starts_with("theta")) %>% 
                   summarise(across(everything(), list( ~quantile(., probs = c(0.05, 0.5, .95))))))
 # add link function
 theta.pars <- apply(theta.pars, 2, function(x) exp(x) / (1 + exp(x)))
@@ -228,12 +244,12 @@ pres.theta
 # combine
 grid.arrange(pres.theta, pres.avg, nrow = 2)
 theta.est <- arrangeGrob(pres.theta, pres.avg, nrow = 2)
-ggsave("appendix/theta-est.png", theta.est, height = 6, width = 8)
+ggsave("figures/theta-est.png", theta.est, height = 6, width = 8)
 
 
 
 # state-year level 
-plot.state.vars <- mcmc_intervals(draws.binom.var, regex_pars = "gamma",
+plot.state.vars <- mcmc_intervals(as.data.frame(draws.binom.var), regex_pars = "gamma",
                              prob = .9, point_est = "median") +
   geom_vline(xintercept = 0) +
   scale_y_discrete(
@@ -241,7 +257,7 @@ plot.state.vars <- mcmc_intervals(draws.binom.var, regex_pars = "gamma",
   ggtitle("State Level")
 plot.state.vars
 # individual level
-plot.indiv.vars <- mcmc_intervals(draws.binom.var, regex_pars = "beta",
+plot.indiv.vars <- mcmc_intervals(as.data.frame(draws.binom.var), regex_pars = "beta",
                              prob = .9, point_est = "median") + 
   geom_vline(xintercept = 0) +
   scale_y_discrete(
@@ -258,7 +274,7 @@ ggsave("appendix/other-levels-vars.png", other.levels.vars, height = 6, width = 
 
 
 # plot year intercepts 
-mcmc_intervals(draws.binom.var, regex_pars = "alpha_year",
+mcmc_intervals(as.data.frame(draws.binom.var), regex_pars = "alpha_year",
                prob = .9, point_est = "median")
 
 
@@ -365,65 +381,3 @@ for(i in 1:length(unique(lambda.democ$democ))){
 }
 
 
-
-
-### Fit model with only a Trump dummy ### 
-
-# Loop over 5 imputed datasets
-# define list of draws
-draws.binom.var <- vector(mode = "list", (length = 5))
-# same data numbers drawn (stan.data.binom.draw)
-
-# loop over five imputed datasets and fit the model to each
-system.time(
-  for(i in 1:length(draws.binom.var)){
-    
-    draw = stan.data.binom.draw[i]  
-    # set up stan data 
-    # create data list
-    stan.data.binom.var <- list(
-      N = nrow(imputed.wvs.sum[[draw]]),
-      n_res = imputed.wvs.sum[[draw]]$n.res,
-      y = imputed.wvs.sum[[draw]]$high.democ.sum,
-      # year/system indicators
-      year = imputed.wvs.sum[[draw]]$year.id,
-      T = length(unique(imputed.wvs.sum[[draw]]$year.id)),
-      # individual level variables
-      I = ncol(imputed.wvs.sum[[draw]][, 3:10]),
-      X = imputed.wvs.sum[[draw]][, 3:10],
-      # state level variables
-      J = ncol(imputed.state.yr.final[[draw]][, 3:12]),
-      Z = imputed.state.yr.final[[draw]][, 3:12],
-      # year/US/system level vars
-      L = ncol(us.data.single.long),
-      G = us.data.single.long,
-      # regional indicators
-      R = length(unique(imputed.wvs.sum[[1]]$region)),
-      group = imputed.wvs.sum[[1]]$region
-    )
-    
-    # stan model fit
-    fit.wvs.bin.var <- stan.model.bin.var$sample(
-      data = stan.data.binom.var,
-      seed = 12,
-      iter_warmup = 1000,
-      iter_sampling = 1000,
-      chains = 4,
-      parallel_chains = 4,
-      refresh = 200,
-      max_treedepth = 20,
-      adapt_delta = .95
-    )
-    
-    # print diagnostics
-    fit.wvs.bin.var$cmdstan_diagnose()
-    
-    draws.binom.var[[i]] <- as_draws_df(fit.wvs.bin.var$draws()) 
-    
-  }
-)
-
-# combine draws into a full posterior
-saveRDS(draws.binom.var, "data/draws-all-var.RDS")
-
-draws.binom.var <- bind_rows(draws.binom.var)
