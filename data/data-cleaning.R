@@ -330,7 +330,8 @@ cl.democ <- read.csv("data/democ_mood_est_v5.csv") %>%
 cl.democ$ccode <- countrycode(cl.democ$ISO3c,
                               origin = "iso3c",
                               destination = "cown") 
-cl.data <- left_join(cl.democ, ipe_v4)
+cl.data <- left_join(cl.democ, ipe_v4) %>%
+            drop_na(ccode) # missing ccode blows up n obs
  
 
 
