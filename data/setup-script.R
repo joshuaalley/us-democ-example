@@ -34,6 +34,10 @@ conflict_prefer("combine", "dplyr")
 conflict_prefer("sd", "posterior")
 conflict_prefer("mad", "posterior")
 conflict_prefer("var", "stats")
+conflict_prefer("brms", "ar")
+conflicts_prefer(lubridate::dst)
+conflicts_prefer(posterior::match)
+
 
 # set seed
 set.seed(12)

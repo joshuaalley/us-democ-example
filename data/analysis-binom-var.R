@@ -13,9 +13,8 @@ stan.model.bin.var$exe_file()
 us.data.single.long <- left_join(select(imputed.state.yr[[1]], ccode, year), 
                                  cbind.data.frame(us.data.final, filter(us.data.five,
                                                                         year %in% unique(state.year.data$year))%>%
-                                                    select(year))
-) %>%
-  select(-c(ccode, year))
+                                                    select(year))) %>%
+  select(-c(ccode, year)) 
 glimpse(us.data.single.long)
 
 
@@ -142,6 +141,30 @@ for(i in 1:length(unique(lambda.var$region))){
   print(plot)
 }
 
+
+# pull year intercepts
+year.re <- draws.binom.var %>% 
+  select(starts_with("alpha_year")) %>%
+  summarise(across(everything(), list( ~quantile(., probs = c(0.05, 0.5, .95)))))
+
+year.re <- as.data.frame(t(year.re[, 31:60]))
+colnames(year.re) <- c("lower", "median", "upper")
+
+# link to spec years 
+year.re$year.id <- parse_number(row.names(year.re))
+
+years <- imputed.wvs.sum[[2]] %>%
+          group_by(year.id) %>%
+          summarize(
+            year = mean(year)
+          ) 
+
+year.re <- left_join(year.re, years) %>%
+            drop_na()
+
+# plot 
+ggplot(year.re, aes(x = year, y = median)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper)) 
 
 
 # plot theta parameters:
